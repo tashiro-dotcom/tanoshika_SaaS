@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model StaffUser {
+  id             String         @id @default(uuid())
+  organizationId String
+  email          String         @unique
+  name           String
+  role           String
+  passwordHash   String?
+  mfaEnabled     Boolean        @default(false)
+  mfaSecret      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  refreshTokens  RefreshToken[]
+}
+
+model ServiceUser {
+  id                 String                     @id @default(uuid())
+  organizationId     String
+  fullName           String
+  disabilityCategory String?
+  contractDate       DateTime?
+  phone              String?
+  emergencyContact   String?
+  status             String
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  statusHistory      ServiceUserStatusHistory[]
+}
+
+model ServiceUserStatusHistory {
+  id             String      @id @default(uuid())
+  organizationId String
+  serviceUserId  String
+  status         String
+  createdAt      DateTime    @default(now())
+  serviceUser    ServiceUser @relation(fields: [serviceUserId], references: [id], onDelete: Cascade)
+
+  @@index([serviceUserId, createdAt])
+}
+
+model SupportPlan {
+  id             String   @id @default(uuid())
+  organizationId String
+  serviceUserId  String
+  version        Int
+  goal           String
+  content        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([serviceUserId, version])
+}
+
+model SupportRecord {
+  id             String   @id @default(uuid())
+  organizationId String
+  serviceUserId  String
+  recordType     String
+  content        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([serviceUserId, createdAt])
+}
+
+model Shift {
+  id             String   @id @default(uuid())
+  organizationId String
+  serviceUserId  String
+  workType       String
+  shiftDate      DateTime
+  startAt        DateTime
+  endAt          DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([serviceUserId, shiftDate])
+}
+
+model AttendanceLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  serviceUserId  String
+  method         String
+  ipAddress      String?
+  location       String?
+  clockInAt      DateTime
+  clockOutAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([serviceUserId, clockInAt])
+}
+
+model AttendanceCorrection {
+  id                  String   @id @default(uuid())
+  organizationId      String
+  attendanceLogId     String
+  requestedBy         String
+  approvedBy          String?
+  reason              String
+  requestedClockInAt  DateTime?
+  requestedClockOutAt DateTime?
+  status              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([attendanceLogId, status])
+}
+
+model WageRate {
+  id             String   @id @default(uuid())
+  organizationId String
+  serviceUserId  String
+  hourlyRate     Int
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([serviceUserId, effectiveFrom])
+}
+
+model WageCalculation {
+  id             String   @id @default(uuid())
+  organizationId String
+  serviceUserId  String
+  year           Int
+  month          Int
+  totalHours     Float
+  hourlyRate     Int
+  grossAmount    Int
+  deductions     Int
+  netAmount      Int
+  approvedBy     String?
+  status         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([serviceUserId, year, month])
+}
+
+model RefreshToken {
+  id             String    @id @default(uuid())
+  token          String    @unique
+  staffUserId    String
+  organizationId String
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  staffUser      StaffUser @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@index([staffUserId, revokedAt])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  actorId        String
+  action         String
+  entity         String
+  entityId       String
+  detail         Json
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+}

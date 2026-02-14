@@ -1,0 +1,31 @@
+# DECISIONS_LOG
+
+重要な設計判断を時系列で残す。
+
+## 2026-02-13
+- MVPを単一事業所モデルで開始（`organization_id` は将来拡張用に保持）
+- 工賃計算は時間ベースのみ
+- 認証はメール/パスワード + TOTP MFA
+- refresh tokenはDB保存し、refresh時に旧トークン失効
+- 主要操作の監査ログをDB保存
+- E2Eで主要業務フローを自動検証
+- API入力は `class-validator + DTO + ValidationPipe` でバリデーションを必須化
+- 認可を強化し、更新/承認/明細APIで `organization_id` 境界を403で拒否
+- E2Eに「他組織アクセス拒否」「staffの権限拒否」を追加
+- 工賃明細のCSV/PDFダウンロードAPI（`/wages/:id/slip.csv`, `/wages/:id/slip.pdf`）を追加
+- 作成系APIでも `serviceUserId` の組織所属を必須検証し、越境指定を403で拒否
+- `:id` パラメータを共通DTOで UUID バリデーション必須化（DB到達前に400）
+- 一覧系APIに `page/limit` バリデーション + `skip/take` を導入（大量件数の安全化）
+- 勤怠一覧に `from/to` 日付範囲バリデーションを導入
+- 工賃明細CSVを日本語ヘッダー+BOM付きに改善（Excel互換性を優先）
+- 工賃明細PDFの出力レイアウトを明細形式へ改善（内訳・発行日時を追加）
+- E2Eに一覧APIの組織分離検証（他組織データ非表示）と勤怠期間クエリ検証を追加
+- 工賃明細(JSON/CSV/PDF)に「利用者名」「事業所名」を追加表示
+- 工賃明細(JSON/CSV/PDF)に「締日」「備考」「承認者ID」「印影欄（PDF）」を追加
+- 自治体出力はテンプレート層で管理し、既定値を `fukuoka` に設定（将来の他自治体拡張前提）
+- CIでPostgreSQLサービス付きE2E（Prisma generate/push/seed/test:e2e）を自動実行
+
+## 記録ルール
+- 1行目に日付（YYYY-MM-DD）
+- 「何を」「なぜ」「影響範囲」を短く残す
+- 運用に影響する変更は必ずここに追記
