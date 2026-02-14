@@ -7,12 +7,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://app:app@localhost:5432/support_mgmt?schema=public
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install
+      - run: npm run prisma:generate -w apps/api
       - run: npm run build
 
   e2e:
