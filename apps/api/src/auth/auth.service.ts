@@ -1,10 +1,15 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { StaffUser } from '@prisma/client';
 import { compare } from 'bcryptjs';
 import { authenticator } from 'otplib';
 import { PrismaService } from '../prisma.service';
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_DAYS } from '../common/constants';
+
+type AuthUser = {
+  id: string;
+  role: string;
+  organizationId: string;
+};
 
 @Injectable()
 export class AuthService {
@@ -102,7 +107,7 @@ export class AuthService {
     return { success: true };
   }
 
-  private async issueTokenPair(user: StaffUser) {
+  private async issueTokenPair(user: AuthUser) {
     const accessToken = this.jwt.sign(
       {
         sub: user.id,
