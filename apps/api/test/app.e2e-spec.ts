@@ -5,6 +5,7 @@ import { hash } from 'bcryptjs';
 import { authenticator } from 'otplib';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma.service';
 
 describe('Major Workflow (e2e)', () => {
@@ -35,6 +36,7 @@ describe('Major Workflow (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    configureApp(app);
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -337,6 +339,12 @@ describe('Major Workflow (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(400);
     expect(invalidRangeRes.body.message).toBe('invalid_date_range');
+  });
+
+  it('exposes OpenAPI JSON document', async () => {
+    const res = await request(app.getHttpServer()).get('/api-docs-json').expect(200);
+    expect(res.body.openapi).toBeDefined();
+    expect(res.body.info?.title).toBe('A型事業所向け支援管理API');
   });
 
   async function loginAndGetAccessToken(email: string, password: string, mfaSecret: string) {

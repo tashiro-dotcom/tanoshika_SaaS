@@ -48,3 +48,7 @@
 - `GET /me/attendance-summary`
 - `GET /me/wage-summary`
 - `GET /me/support-summary`
+
+## OpenAPI
+- `GET /api-docs` (Swagger UI)
+- `GET /api-docs-json` (OpenAPI JSON)
