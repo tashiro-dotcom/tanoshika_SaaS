@@ -8,3 +8,6 @@ coverage
 pnpm-lock.yaml
 .DS_Store
 *.log
+logs/sessions/*
+!logs/sessions/.gitkeep
+STATE/memory_suggestions.md
