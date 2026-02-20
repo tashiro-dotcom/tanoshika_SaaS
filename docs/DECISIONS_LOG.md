@@ -34,6 +34,7 @@
 - OpenAPI正常系レスポンス明示を残り主要エンドポイントへ展開（Staff/Service/Shift/Support/Attendance）
 - OpenAPIリクエスト例を主要DTOへ追加（Body/Query の入力サンプルをSwaggerで即参照可能に）
 - CSV/PDF出力APIにOpenAPIの `produces`/ヘッダー仕様説明を追加（運用時の誤解防止）
+- OpenAPI DTOへ現場向けdescriptionを追加し、入力項目の意味をSwagger上で明確化
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
