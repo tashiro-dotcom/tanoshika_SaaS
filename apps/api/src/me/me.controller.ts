@@ -1,9 +1,10 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
+import { AttendanceSummaryResponseDto, SupportSummaryResponseDto, WageSummaryResponseDto } from './me.response.dto';
 
 @ApiTags('User Portal')
 @ApiBearerAuth()
@@ -16,6 +17,7 @@ export class MeController {
   @Get('attendance-summary')
   @Roles('user')
   @ApiOperation({ summary: '利用者向け勤怠サマリーを取得' })
+  @ApiOkResponse({ type: AttendanceSummaryResponseDto })
   async attendanceSummary(@Req() req: any) {
     const logs = await this.prisma.attendanceLog.findMany({
       where: {
@@ -36,6 +38,7 @@ export class MeController {
   @Get('wage-summary')
   @Roles('user')
   @ApiOperation({ summary: '利用者向け工賃サマリーを取得' })
+  @ApiOkResponse({ type: WageSummaryResponseDto })
   async wageSummary(@Req() req: any) {
     const rows = await this.prisma.wageCalculation.findMany({
       where: {
@@ -56,6 +59,7 @@ export class MeController {
   @Get('support-summary')
   @Roles('user')
   @ApiOperation({ summary: '利用者向け支援サマリーを取得' })
+  @ApiOkResponse({ type: SupportSummaryResponseDto })
   async supportSummary(@Req() req: any) {
     const [records, latestPlan] = await Promise.all([
       this.prisma.supportRecord.findMany({

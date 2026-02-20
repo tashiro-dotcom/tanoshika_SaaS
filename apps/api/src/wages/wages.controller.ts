@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
@@ -9,6 +9,12 @@ import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { CalculateMonthlyWagesDto } from './wages.dto';
 import { getMunicipalityTemplate, listMunicipalityTemplates, WageSlipView } from './wage-slip-template';
+import {
+  WageCalculateResponseDto,
+  WageCalculationItemDto,
+  WageSlipResponseDto,
+  WageTemplatesResponseDto,
+} from './wages.response.dto';
 
 function hoursBetween(start: Date, end: Date | null): number {
   if (!end) return 0;
@@ -29,6 +35,7 @@ export class WagesController {
   @Get('templates')
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '工賃明細の自治体テンプレート一覧を取得' })
+  @ApiOkResponse({ type: WageTemplatesResponseDto })
   listTemplates() {
     const current = getMunicipalityTemplate();
     return {
@@ -40,6 +47,7 @@ export class WagesController {
   @Post('calculate-monthly')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: '月次工賃を計算' })
+  @ApiOkResponse({ type: WageCalculateResponseDto })
   async calculate(@Req() req: any, @Body() body: CalculateMonthlyWagesDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     const start = new Date(Date.UTC(body.year, body.month - 1, 1));
@@ -106,6 +114,7 @@ export class WagesController {
   @Post(':id/approve')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: '工賃計算を承認確定' })
+  @ApiOkResponse({ type: WageCalculationItemDto })
   async approve(@Req() req: any, @Param() params: IdParamDto) {
     const { id } = params;
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
@@ -136,6 +145,7 @@ export class WagesController {
   @Get(':id/slip')
   @Roles('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '工賃明細(JSON)を取得' })
+  @ApiOkResponse({ type: WageSlipResponseDto })
   async slip(@Req() req: any, @Param() params: IdParamDto) {
     const { id } = params;
     const view = await this.getSlipViewOrThrow(req, id);
