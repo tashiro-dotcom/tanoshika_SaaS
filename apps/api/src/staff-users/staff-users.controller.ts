@@ -1,5 +1,5 @@
 import { Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { hash } from 'bcryptjs';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
@@ -9,6 +9,7 @@ import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { CreateStaffUserDto, PatchRoleDto, UpdateStaffUserDto } from './staff-users.dto';
+import { StaffUserResponseDto } from './staff-users.response.dto';
 
 @ApiTags('Staff Users')
 @ApiBearerAuth()
@@ -24,6 +25,7 @@ export class StaffUsersController {
   @Get()
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'スタッフ一覧を取得' })
+  @ApiOkResponse({ type: StaffUserResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
     const { skip, take } = toSkipTake(query);
     return this.prisma.staffUser.findMany({
@@ -47,6 +49,7 @@ export class StaffUsersController {
   @Post()
   @Roles('admin')
   @ApiOperation({ summary: 'スタッフを作成' })
+  @ApiOkResponse({ type: StaffUserResponseDto })
   async create(@Req() req: any, @Body() body: CreateStaffUserDto) {
     const item = await this.prisma.staffUser.create({
       data: {
@@ -85,6 +88,7 @@ export class StaffUsersController {
   @Patch(':id')
   @Roles('admin')
   @ApiOperation({ summary: 'スタッフ情報を更新' })
+  @ApiOkResponse({ type: StaffUserResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateStaffUserDto) {
     const { id } = params;
     return this.updateById(req, id, body);
@@ -93,6 +97,7 @@ export class StaffUsersController {
   @Patch(':id/roles')
   @Roles('admin')
   @ApiOperation({ summary: 'スタッフロールを更新' })
+  @ApiOkResponse({ type: StaffUserResponseDto })
   patchRole(@Req() req: any, @Param() params: IdParamDto, @Body() body: PatchRoleDto) {
     const { id } = params;
     return this.updateById(req, id, { role: body.role });

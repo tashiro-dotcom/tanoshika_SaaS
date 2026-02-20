@@ -1,5 +1,5 @@
 import { Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
@@ -8,6 +8,7 @@ import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { BulkShiftDto, CreateShiftDto, UpdateShiftDto } from './shifts.dto';
+import { BulkShiftResponseDto, ShiftResponseDto } from './shifts.response.dto';
 
 @ApiTags('Shifts')
 @ApiBearerAuth()
@@ -23,6 +24,7 @@ export class ShiftsController {
   @Get()
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'シフト一覧を取得' })
+  @ApiOkResponse({ type: ShiftResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
     const { skip, take } = toSkipTake(query);
     return this.prisma.shift.findMany({
@@ -36,6 +38,7 @@ export class ShiftsController {
   @Post()
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'シフトを作成' })
+  @ApiOkResponse({ type: ShiftResponseDto })
   async create(@Req() req: any, @Body() body: CreateShiftDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     await this.assertServiceUserInOrganization(body.serviceUserId, org);
@@ -66,6 +69,7 @@ export class ShiftsController {
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'シフトを更新' })
+  @ApiOkResponse({ type: ShiftResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateShiftDto) {
     const { id } = params;
     const existing = await this.prisma.shift.findUnique({ where: { id } });
@@ -96,6 +100,7 @@ export class ShiftsController {
   @Post('bulk')
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'シフトを一括作成' })
+  @ApiOkResponse({ type: BulkShiftResponseDto })
   async bulk(@Req() req: any, @Body() body: BulkShiftDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     for (const entry of body.items) {

@@ -31,6 +31,7 @@
 - OpenAPIに共通エラーレスポンススキーマを導入し、主要Controllerに一括適用（エラー契約の見える化）
 - OpenAPI主要正常系レスポンスをDTO化し `@ApiOkResponse` を追加（Auth/Wages/User Portal）
 - OpenAPI主要正常系にExampleレスポンスを追加（Auth/Wages/User Portal、Swaggerデモ容易化）
+- OpenAPI正常系レスポンス明示を残り主要エンドポイントへ展開（Staff/Service/Shift/Support/Attendance）
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）

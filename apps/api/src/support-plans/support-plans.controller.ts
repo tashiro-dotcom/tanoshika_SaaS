@@ -1,5 +1,5 @@
 import { Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
@@ -8,6 +8,7 @@ import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { CreateSupportPlanDto, UpdateSupportPlanDto } from './support-plans.dto';
+import { SupportPlanResponseDto } from './support-plans.response.dto';
 
 @ApiTags('Support Plans')
 @ApiBearerAuth()
@@ -23,6 +24,7 @@ export class SupportPlansController {
   @Get()
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援計画一覧を取得' })
+  @ApiOkResponse({ type: SupportPlanResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
     const { skip, take } = toSkipTake(query);
     return this.prisma.supportPlan.findMany({
@@ -36,6 +38,7 @@ export class SupportPlansController {
   @Post()
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援計画を作成（版管理）' })
+  @ApiOkResponse({ type: SupportPlanResponseDto })
   async create(@Req() req: any, @Body() body: CreateSupportPlanDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     await this.assertServiceUserInOrganization(body.serviceUserId, org);
@@ -73,6 +76,7 @@ export class SupportPlansController {
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援計画を更新' })
+  @ApiOkResponse({ type: SupportPlanResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateSupportPlanDto) {
     const { id } = params;
     const existing = await this.prisma.supportPlan.findUnique({ where: { id } });
