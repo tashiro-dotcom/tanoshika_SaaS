@@ -9,8 +9,8 @@
 
 ## 優先度 Medium
 1. CIで `guardrails-check` と `e2e` を必須ステータスに設定
-2. OpenAPIのレスポンス例をCSV/PDFエンドポイント説明に拡張
-3. OpenAPI DTOのdescription補完（現場向け文言最適化）
+2. OpenAPI DTOのdescription補完（現場向け文言最適化）
+3. OpenAPIでCSV/PDFバイナリレスポンス定義をさらに厳密化
 
 ## 優先度 Low
 1. Next.js 14.2.30 の脆弱性対応アップデート

@@ -45,6 +45,15 @@
 - `GET /wages/:id/slip.csv`
 - `GET /wages/:id/slip.pdf`
 
+### Export Endpoints (CSV/PDF)
+- `GET /wages/:id/slip.csv`
+  - `Content-Type: text/csv; charset=utf-8`
+  - `Content-Disposition: attachment; filename="wage-slip-<id>-<yyyymm>.csv"`
+  - UTF-8 BOM付き（Excel互換）
+- `GET /wages/:id/slip.pdf`
+  - `Content-Type: application/pdf`
+  - `Content-Disposition: attachment; filename="wage-slip-<id>-<yyyymm>.pdf"`
+
 ## User Portal
 - `GET /me/attendance-summary`
 - `GET /me/wage-summary`

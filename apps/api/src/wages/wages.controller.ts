@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
@@ -228,6 +228,11 @@ export class WagesController {
   @Get(':id/slip.csv')
   @Roles('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '工賃明細(CSV)を出力' })
+  @ApiProduces('text/csv')
+  @ApiOkResponse({
+    description:
+      'CSVファイルを添付形式で返却。Header: Content-Type=text/csv; charset=utf-8, Content-Disposition=attachment; filename="wage-slip-<id>-<yyyymm>.csv"',
+  })
   async slipCsv(@Req() req: any, @Param() params: IdParamDto, @Res() res: Response) {
     const { id } = params;
     const view = await this.getSlipViewOrThrow(req, id);
@@ -245,6 +250,11 @@ export class WagesController {
   @Get(':id/slip.pdf')
   @Roles('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '工賃明細(PDF)を出力' })
+  @ApiProduces('application/pdf')
+  @ApiOkResponse({
+    description:
+      'PDFファイルを添付形式で返却。Header: Content-Type=application/pdf, Content-Disposition=attachment; filename="wage-slip-<id>-<yyyymm>.pdf"',
+  })
   async slipPdf(@Req() req: any, @Param() params: IdParamDto, @Res() res: Response) {
     const { id } = params;
     const view = await this.getSlipViewOrThrow(req, id);
