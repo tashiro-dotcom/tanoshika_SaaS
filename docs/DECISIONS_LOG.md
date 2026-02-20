@@ -30,6 +30,7 @@
 - OpenAPI運用を強化し、主要Controllerへ `@ApiTags`/`@ApiBearerAuth`/`@ApiOperation` を付与（Swaggerの可読性向上）
 - OpenAPIに共通エラーレスポンススキーマを導入し、主要Controllerに一括適用（エラー契約の見える化）
 - OpenAPI主要正常系レスポンスをDTO化し `@ApiOkResponse` を追加（Auth/Wages/User Portal）
+- OpenAPI主要正常系にExampleレスポンスを追加（Auth/Wages/User Portal、Swaggerデモ容易化）
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
