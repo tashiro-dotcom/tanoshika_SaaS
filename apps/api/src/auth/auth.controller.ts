@@ -1,9 +1,11 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiAuthErrorResponses } from '../common/swagger-error.decorators';
 import { LoginDto, LogoutDto, RefreshDto, VerifyMfaDto } from './auth.dto';
 import { AuthService } from './auth.service';
 
 @ApiTags('Auth')
+@ApiAuthErrorResponses()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

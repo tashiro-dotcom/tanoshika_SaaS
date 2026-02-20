@@ -5,11 +5,13 @@ import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
+import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { BulkShiftDto, CreateShiftDto, UpdateShiftDto } from './shifts.dto';
 
 @ApiTags('Shifts')
 @ApiBearerAuth()
+@ApiCommonErrorResponses()
 @Controller('shifts')
 @UseGuards(RolesGuard)
 export class ShiftsController {

@@ -2,10 +2,12 @@ import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
+import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 
 @ApiTags('User Portal')
 @ApiBearerAuth()
+@ApiCommonErrorResponses()
 @Controller('me')
 @UseGuards(RolesGuard)
 export class MeController {
