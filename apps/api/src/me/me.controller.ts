@@ -1,8 +1,11 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { PrismaService } from '../prisma.service';
 
+@ApiTags('User Portal')
+@ApiBearerAuth()
 @Controller('me')
 @UseGuards(RolesGuard)
 export class MeController {
@@ -10,6 +13,7 @@ export class MeController {
 
   @Get('attendance-summary')
   @Roles('user')
+  @ApiOperation({ summary: '利用者向け勤怠サマリーを取得' })
   async attendanceSummary(@Req() req: any) {
     const logs = await this.prisma.attendanceLog.findMany({
       where: {
@@ -29,6 +33,7 @@ export class MeController {
 
   @Get('wage-summary')
   @Roles('user')
+  @ApiOperation({ summary: '利用者向け工賃サマリーを取得' })
   async wageSummary(@Req() req: any) {
     const rows = await this.prisma.wageCalculation.findMany({
       where: {
@@ -48,6 +53,7 @@ export class MeController {
 
   @Get('support-summary')
   @Roles('user')
+  @ApiOperation({ summary: '利用者向け支援サマリーを取得' })
   async supportSummary(@Req() req: any) {
     const [records, latestPlan] = await Promise.all([
       this.prisma.supportRecord.findMany({

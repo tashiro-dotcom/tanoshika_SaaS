@@ -1,4 +1,5 @@
 import { Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
@@ -7,6 +8,8 @@ import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { PrismaService } from '../prisma.service';
 import { BulkShiftDto, CreateShiftDto, UpdateShiftDto } from './shifts.dto';
 
+@ApiTags('Shifts')
+@ApiBearerAuth()
 @Controller('shifts')
 @UseGuards(RolesGuard)
 export class ShiftsController {
@@ -17,6 +20,7 @@ export class ShiftsController {
 
   @Get()
   @Roles('admin', 'manager', 'staff')
+  @ApiOperation({ summary: 'シフト一覧を取得' })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
     const { skip, take } = toSkipTake(query);
     return this.prisma.shift.findMany({
@@ -29,6 +33,7 @@ export class ShiftsController {
 
   @Post()
   @Roles('admin', 'manager', 'staff')
+  @ApiOperation({ summary: 'シフトを作成' })
   async create(@Req() req: any, @Body() body: CreateShiftDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     await this.assertServiceUserInOrganization(body.serviceUserId, org);
@@ -58,6 +63,7 @@ export class ShiftsController {
 
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
+  @ApiOperation({ summary: 'シフトを更新' })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateShiftDto) {
     const { id } = params;
     const existing = await this.prisma.shift.findUnique({ where: { id } });
@@ -87,6 +93,7 @@ export class ShiftsController {
 
   @Post('bulk')
   @Roles('admin', 'manager', 'staff')
+  @ApiOperation({ summary: 'シフトを一括作成' })
   async bulk(@Req() req: any, @Body() body: BulkShiftDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     for (const entry of body.items) {
