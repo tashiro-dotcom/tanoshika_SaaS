@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
@@ -7,6 +8,8 @@ import { toSkipTake } from '../common/pagination.dto';
 import { PrismaService } from '../prisma.service';
 import { AttendanceListQueryDto, ClockInDto, ClockOutDto, CreateAttendanceCorrectionDto } from './attendance.dto';
 
+@ApiTags('Attendance')
+@ApiBearerAuth()
 @Controller()
 @UseGuards(RolesGuard)
 export class AttendanceController {
@@ -17,6 +20,7 @@ export class AttendanceController {
 
   @Post('attendance/clock-in')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiOperation({ summary: '出勤打刻' })
   async clockIn(@Req() req: any, @Body() body: ClockInDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     const serviceUserId = body.serviceUserId || req.user.serviceUserId;
@@ -48,6 +52,7 @@ export class AttendanceController {
 
   @Post('attendance/clock-out')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiOperation({ summary: '退勤打刻' })
   async clockOut(@Req() req: any, @Body() body: ClockOutDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     const serviceUserId = body.serviceUserId || req.user.serviceUserId;
@@ -84,6 +89,7 @@ export class AttendanceController {
 
   @Get('attendance')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiOperation({ summary: '勤怠一覧を取得' })
   list(@Req() req: any, @Query() query: AttendanceListQueryDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     const { skip, take } = toSkipTake(query);
@@ -125,6 +131,7 @@ export class AttendanceController {
 
   @Post('attendance-corrections')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiOperation({ summary: '勤怠修正申請を作成' })
   async correction(@Req() req: any, @Body() body: CreateAttendanceCorrectionDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     const attendance = await this.prisma.attendanceLog.findUnique({ where: { id: body.attendanceLogId } });
@@ -157,6 +164,7 @@ export class AttendanceController {
 
   @Post('attendance-corrections/:id/approve')
   @Roles('admin', 'manager')
+  @ApiOperation({ summary: '勤怠修正申請を承認' })
   async approveCorrection(@Req() req: any, @Param() params: IdParamDto) {
     const { id } = params;
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;

@@ -1,4 +1,5 @@
 import { Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
@@ -7,6 +8,8 @@ import { toSkipTake } from '../common/pagination.dto';
 import { PrismaService } from '../prisma.service';
 import { CreateSupportRecordDto, ListSupportRecordsQueryDto, UpdateSupportRecordDto } from './support-records.dto';
 
+@ApiTags('Support Records')
+@ApiBearerAuth()
 @Controller('support-records')
 @UseGuards(RolesGuard)
 export class SupportRecordsController {
@@ -17,6 +20,7 @@ export class SupportRecordsController {
 
   @Get()
   @Roles('admin', 'manager', 'staff')
+  @ApiOperation({ summary: '支援記録一覧を取得' })
   list(@Req() req: any, @Query() query: ListSupportRecordsQueryDto) {
     const { skip, take } = toSkipTake(query);
     return this.prisma.supportRecord.findMany({
@@ -32,6 +36,7 @@ export class SupportRecordsController {
 
   @Post()
   @Roles('admin', 'manager', 'staff')
+  @ApiOperation({ summary: '支援記録を作成' })
   async create(@Req() req: any, @Body() body: CreateSupportRecordDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     await this.assertServiceUserInOrganization(body.serviceUserId, org);
@@ -59,6 +64,7 @@ export class SupportRecordsController {
 
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
+  @ApiOperation({ summary: '支援記録を更新' })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateSupportRecordDto) {
     const { id } = params;
     const existing = await this.prisma.supportRecord.findUnique({ where: { id } });

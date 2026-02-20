@@ -27,6 +27,7 @@
 - OpenAPI自動生成を導入（`/api-docs`, `/api-docs-json`）
 - 工賃明細テンプレートをレジストリ化し、福岡を既定のまま他自治体追加余地を実装（`GET /wages/templates` で利用可能テンプレート確認）
 - Global Exception Filter を導入し、HTTP/Prisma例外を統一レスポンス形式で返却（`statusCode/message/error/code/timestamp/path`）
+- OpenAPI運用を強化し、主要Controllerへ `@ApiTags`/`@ApiBearerAuth`/`@ApiOperation` を付与（Swaggerの可読性向上）
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）

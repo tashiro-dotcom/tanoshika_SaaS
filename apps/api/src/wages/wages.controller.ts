@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
@@ -13,6 +14,8 @@ function hoursBetween(start: Date, end: Date | null): number {
   return Math.max(0, (end.getTime() - start.getTime()) / 1000 / 60 / 60);
 }
 
+@ApiTags('Wages')
+@ApiBearerAuth()
 @Controller('wages')
 @UseGuards(RolesGuard)
 export class WagesController {
@@ -23,6 +26,7 @@ export class WagesController {
 
   @Get('templates')
   @Roles('admin', 'manager', 'staff')
+  @ApiOperation({ summary: '工賃明細の自治体テンプレート一覧を取得' })
   listTemplates() {
     const current = getMunicipalityTemplate();
     return {
@@ -33,6 +37,7 @@ export class WagesController {
 
   @Post('calculate-monthly')
   @Roles('admin', 'manager')
+  @ApiOperation({ summary: '月次工賃を計算' })
   async calculate(@Req() req: any, @Body() body: CalculateMonthlyWagesDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     const start = new Date(Date.UTC(body.year, body.month - 1, 1));
@@ -98,6 +103,7 @@ export class WagesController {
 
   @Post(':id/approve')
   @Roles('admin', 'manager')
+  @ApiOperation({ summary: '工賃計算を承認確定' })
   async approve(@Req() req: any, @Param() params: IdParamDto) {
     const { id } = params;
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
@@ -127,6 +133,7 @@ export class WagesController {
 
   @Get(':id/slip')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiOperation({ summary: '工賃明細(JSON)を取得' })
   async slip(@Req() req: any, @Param() params: IdParamDto) {
     const { id } = params;
     const view = await this.getSlipViewOrThrow(req, id);
@@ -138,6 +145,7 @@ export class WagesController {
 
   @Get(':id/slip.csv')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiOperation({ summary: '工賃明細(CSV)を出力' })
   async slipCsv(@Req() req: any, @Param() params: IdParamDto, @Res() res: Response) {
     const { id } = params;
     const view = await this.getSlipViewOrThrow(req, id);
@@ -154,6 +162,7 @@ export class WagesController {
 
   @Get(':id/slip.pdf')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiOperation({ summary: '工賃明細(PDF)を出力' })
   async slipPdf(@Req() req: any, @Param() params: IdParamDto, @Res() res: Response) {
     const { id } = params;
     const view = await this.getSlipViewOrThrow(req, id);
