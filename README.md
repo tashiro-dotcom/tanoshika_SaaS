@@ -45,6 +45,11 @@
 
 主要業務フロー（打刻→修正承認→月次工賃→明細）を検証します。
 
+## OpenAPI
+
+- Swagger UI: `http://localhost:3001/api-docs`
+- OpenAPI JSON: `http://localhost:3001/api-docs-json`
+
 ## 継続開発の基準（ぶれ防止）
 
 - 固定方針: `docs/PROJECT_GUARDRAILS.md`

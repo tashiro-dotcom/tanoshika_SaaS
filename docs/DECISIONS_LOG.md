@@ -24,9 +24,10 @@
 - 工賃明細(JSON/CSV/PDF)に「締日」「備考」「承認者ID」「印影欄（PDF）」を追加
 - 自治体出力はテンプレート層で管理し、既定値を `fukuoka` に設定（将来の他自治体拡張前提）
 - CIでPostgreSQLサービス付きE2E（Prisma generate/push/seed/test:e2e）を自動実行
+- OpenAPI自動生成を導入（`/api-docs`, `/api-docs-json`）
+- 工賃明細テンプレートをレジストリ化し、福岡を既定のまま他自治体追加余地を実装（`GET /wages/templates` で利用可能テンプレート確認）
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
 - 「何を」「なぜ」「影響範囲」を短く残す
 - 運用に影響する変更は必ずここに追記
-

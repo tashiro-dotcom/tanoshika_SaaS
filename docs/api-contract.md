@@ -40,6 +40,7 @@
 ## Wages
 - `POST /wages/calculate-monthly`
 - `POST /wages/:id/approve`
+- `GET /wages/templates`
 - `GET /wages/:id/slip`
 - `GET /wages/:id/slip.csv`
 - `GET /wages/:id/slip.pdf`
@@ -48,3 +49,7 @@
 - `GET /me/attendance-summary`
 - `GET /me/wage-summary`
 - `GET /me/support-summary`
+
+## OpenAPI
+- `GET /api-docs` (Swagger UI)
+- `GET /api-docs-json` (OpenAPI JSON)
