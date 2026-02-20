@@ -1,5 +1,5 @@
 import { Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
@@ -8,6 +8,7 @@ import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { CreateServiceUserDto, UpdateServiceUserDto, UpdateServiceUserStatusDto } from './service-users.dto';
+import { ServiceUserResponseDto } from './service-users.response.dto';
 
 @ApiTags('Service Users')
 @ApiBearerAuth()
@@ -23,6 +24,7 @@ export class ServiceUsersController {
   @Get()
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '利用者一覧を取得' })
+  @ApiOkResponse({ type: ServiceUserResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
     const { skip, take } = toSkipTake(query);
     return this.prisma.serviceUser.findMany({
@@ -37,6 +39,7 @@ export class ServiceUsersController {
   @Post()
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '利用者を登録' })
+  @ApiOkResponse({ type: ServiceUserResponseDto })
   async create(@Req() req: any, @Body() body: CreateServiceUserDto) {
     const item = await this.prisma.serviceUser.create({
       data: {
@@ -72,6 +75,7 @@ export class ServiceUsersController {
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '利用者情報を更新' })
+  @ApiOkResponse({ type: ServiceUserResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateServiceUserDto) {
     const { id } = params;
     const existing = await this.prisma.serviceUser.findUnique({ where: { id } });
@@ -104,6 +108,7 @@ export class ServiceUsersController {
   @Patch(':id/status')
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '利用者ステータスを更新' })
+  @ApiOkResponse({ type: ServiceUserResponseDto })
   async updateStatus(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateServiceUserStatusDto) {
     const { id } = params;
     const existing = await this.prisma.serviceUser.findUnique({ where: { id } });
