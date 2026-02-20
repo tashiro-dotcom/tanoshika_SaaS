@@ -50,9 +50,11 @@
   - `Content-Type: text/csv; charset=utf-8`
   - `Content-Disposition: attachment; filename="wage-slip-<id>-<yyyymm>.csv"`
   - UTF-8 BOM付き（Excel互換）
+  - OpenAPI schema: `text/csv` + `type: string`, `format: binary`
 - `GET /wages/:id/slip.pdf`
   - `Content-Type: application/pdf`
   - `Content-Disposition: attachment; filename="wage-slip-<id>-<yyyymm>.pdf"`
+  - OpenAPI schema: `application/pdf` + `type: string`, `format: binary`
 
 ## User Portal
 - `GET /me/attendance-summary`

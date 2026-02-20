@@ -35,6 +35,7 @@
 - OpenAPIリクエスト例を主要DTOへ追加（Body/Query の入力サンプルをSwaggerで即参照可能に）
 - CSV/PDF出力APIにOpenAPIの `produces`/ヘッダー仕様説明を追加（運用時の誤解防止）
 - OpenAPI DTOへ現場向けdescriptionを追加し、入力項目の意味をSwagger上で明確化
+- CSV/PDF出力APIをOpenAPI上で `format: binary` として明示し、SDK/連携時の機械判定を安定化
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）

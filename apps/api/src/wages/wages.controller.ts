@@ -230,8 +230,25 @@ export class WagesController {
   @ApiOperation({ summary: '工賃明細(CSV)を出力' })
   @ApiProduces('text/csv')
   @ApiOkResponse({
-    description:
-      'CSVファイルを添付形式で返却。Header: Content-Type=text/csv; charset=utf-8, Content-Disposition=attachment; filename="wage-slip-<id>-<yyyymm>.csv"',
+    description: 'CSVファイル（UTF-8 BOM付き）を添付形式で返却',
+    headers: {
+      'Content-Type': {
+        description: 'text/csv; charset=utf-8',
+        schema: { type: 'string', example: 'text/csv; charset=utf-8' },
+      },
+      'Content-Disposition': {
+        description: '添付ファイル名',
+        schema: {
+          type: 'string',
+          example: 'attachment; filename="wage-slip-d7bcf582-60ba-4825-a908-7e7c7f2b8c4f-202602.csv"',
+        },
+      },
+    },
+    content: {
+      'text/csv': {
+        schema: { type: 'string', format: 'binary' },
+      },
+    },
   })
   async slipCsv(@Req() req: any, @Param() params: IdParamDto, @Res() res: Response) {
     const { id } = params;
@@ -252,8 +269,25 @@ export class WagesController {
   @ApiOperation({ summary: '工賃明細(PDF)を出力' })
   @ApiProduces('application/pdf')
   @ApiOkResponse({
-    description:
-      'PDFファイルを添付形式で返却。Header: Content-Type=application/pdf, Content-Disposition=attachment; filename="wage-slip-<id>-<yyyymm>.pdf"',
+    description: 'PDFファイルを添付形式で返却',
+    headers: {
+      'Content-Type': {
+        description: 'application/pdf',
+        schema: { type: 'string', example: 'application/pdf' },
+      },
+      'Content-Disposition': {
+        description: '添付ファイル名',
+        schema: {
+          type: 'string',
+          example: 'attachment; filename="wage-slip-d7bcf582-60ba-4825-a908-7e7c7f2b8c4f-202602.pdf"',
+        },
+      },
+    },
+    content: {
+      'application/pdf': {
+        schema: { type: 'string', format: 'binary' },
+      },
+    },
   })
   async slipPdf(@Req() req: any, @Param() params: IdParamDto, @Res() res: Response) {
     const { id } = params;
