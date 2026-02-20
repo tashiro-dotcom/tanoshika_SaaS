@@ -341,6 +341,20 @@ describe('Major Workflow (e2e)', () => {
     expect(invalidRangeRes.body.message).toBe('invalid_date_range');
   });
 
+  it('returns municipality template registry for wage slips', async () => {
+    const adminToken = await loginAndGetAccessToken(adminEmail, adminPassword, adminMfaSecret);
+    const res = await request(app.getHttpServer())
+      .get('/wages/templates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(res.body.current?.code).toBe('fukuoka');
+    expect(Array.isArray(res.body.available)).toBe(true);
+    expect(res.body.available.some((x: any) => x.code === 'fukuoka')).toBe(true);
+    expect(res.body.available.some((x: any) => x.code === 'kumamoto')).toBe(true);
+    expect(res.body.available.some((x: any) => x.code === 'saga')).toBe(true);
+  });
+
   it('exposes OpenAPI JSON document', async () => {
     const res = await request(app.getHttpServer()).get('/api-docs-json').expect(200);
     expect(res.body.openapi).toBeDefined();

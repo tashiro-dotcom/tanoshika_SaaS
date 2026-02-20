@@ -40,6 +40,7 @@
 ## Wages
 - `POST /wages/calculate-monthly`
 - `POST /wages/:id/approve`
+- `GET /wages/templates`
 - `GET /wages/:id/slip`
 - `GET /wages/:id/slip.csv`
 - `GET /wages/:id/slip.pdf`

@@ -6,7 +6,7 @@ import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { PrismaService } from '../prisma.service';
 import { CalculateMonthlyWagesDto } from './wages.dto';
-import { getMunicipalityTemplate, WageSlipView } from './wage-slip-template';
+import { getMunicipalityTemplate, listMunicipalityTemplates, WageSlipView } from './wage-slip-template';
 
 function hoursBetween(start: Date, end: Date | null): number {
   if (!end) return 0;
@@ -20,6 +20,16 @@ export class WagesController {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  @Get('templates')
+  @Roles('admin', 'manager', 'staff')
+  listTemplates() {
+    const current = getMunicipalityTemplate();
+    return {
+      current: { code: current.code, label: current.label },
+      available: listMunicipalityTemplates(),
+    };
+  }
 
   @Post('calculate-monthly')
   @Roles('admin', 'manager')

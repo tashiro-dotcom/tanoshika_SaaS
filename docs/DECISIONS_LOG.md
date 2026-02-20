@@ -25,6 +25,7 @@
 - 自治体出力はテンプレート層で管理し、既定値を `fukuoka` に設定（将来の他自治体拡張前提）
 - CIでPostgreSQLサービス付きE2E（Prisma generate/push/seed/test:e2e）を自動実行
 - OpenAPI自動生成を導入（`/api-docs`, `/api-docs-json`）
+- 工賃明細テンプレートをレジストリ化し、福岡を既定のまま他自治体追加余地を実装（`GET /wages/templates` で利用可能テンプレート確認）
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
