@@ -6,6 +6,7 @@ import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
+import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { AttendanceListQueryDto, ClockInDto, ClockOutDto, CreateAttendanceCorrectionDto } from './attendance.dto';
 import { AttendanceCorrectionResponseDto, AttendanceLogResponseDto } from './attendance.response.dto';
@@ -23,6 +24,7 @@ export class AttendanceController {
 
   @Post('attendance/clock-in')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiRolesNote('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '出勤打刻' })
   @ApiOkResponse({ type: AttendanceLogResponseDto })
   async clockIn(@Req() req: any, @Body() body: ClockInDto) {
@@ -56,6 +58,7 @@ export class AttendanceController {
 
   @Post('attendance/clock-out')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiRolesNote('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '退勤打刻' })
   @ApiOkResponse({ type: AttendanceLogResponseDto })
   async clockOut(@Req() req: any, @Body() body: ClockOutDto) {
@@ -94,6 +97,7 @@ export class AttendanceController {
 
   @Get('attendance')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiRolesNote('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '勤怠一覧を取得' })
   @ApiOkResponse({ type: AttendanceLogResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: AttendanceListQueryDto) {
@@ -137,6 +141,7 @@ export class AttendanceController {
 
   @Post('attendance-corrections')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiRolesNote('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '勤怠修正申請を作成' })
   @ApiOkResponse({ type: AttendanceCorrectionResponseDto })
   async correction(@Req() req: any, @Body() body: CreateAttendanceCorrectionDto) {
@@ -171,6 +176,7 @@ export class AttendanceController {
 
   @Post('attendance-corrections/:id/approve')
   @Roles('admin', 'manager')
+  @ApiRolesNote('admin', 'manager')
   @ApiOperation({ summary: '勤怠修正申請を承認' })
   @ApiOkResponse({ type: AttendanceCorrectionResponseDto })
   async approveCorrection(@Req() req: any, @Param() params: IdParamDto) {

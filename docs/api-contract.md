@@ -64,6 +64,7 @@
 ## OpenAPI
 - `GET /api-docs` (Swagger UI)
 - `GET /api-docs-json` (OpenAPI JSON)
+- 認可ロール要件は各Operationの `x-roles` 拡張で確認可能
 
 ## Error Response (共通)
 APIエラー時は原則以下の形式で返却する。

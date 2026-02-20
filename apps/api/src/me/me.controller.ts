@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swa
 import { Roles, RolesGuard } from '../common/authz';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
+import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { AttendanceSummaryResponseDto, SupportSummaryResponseDto, WageSummaryResponseDto } from './me.response.dto';
 
@@ -16,6 +17,7 @@ export class MeController {
 
   @Get('attendance-summary')
   @Roles('user')
+  @ApiRolesNote('user')
   @ApiOperation({ summary: '利用者向け勤怠サマリーを取得' })
   @ApiOkResponse({
     type: AttendanceSummaryResponseDto,
@@ -52,6 +54,7 @@ export class MeController {
 
   @Get('wage-summary')
   @Roles('user')
+  @ApiRolesNote('user')
   @ApiOperation({ summary: '利用者向け工賃サマリーを取得' })
   @ApiOkResponse({
     type: WageSummaryResponseDto,
@@ -88,6 +91,7 @@ export class MeController {
 
   @Get('support-summary')
   @Roles('user')
+  @ApiRolesNote('user')
   @ApiOperation({ summary: '利用者向け支援サマリーを取得' })
   @ApiOkResponse({
     type: SupportSummaryResponseDto,

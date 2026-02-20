@@ -6,6 +6,7 @@ import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
+import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { CalculateMonthlyWagesDto } from './wages.dto';
 import { getMunicipalityTemplate, listMunicipalityTemplates, WageSlipView } from './wage-slip-template';
@@ -34,6 +35,7 @@ export class WagesController {
 
   @Get('templates')
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '工賃明細の自治体テンプレート一覧を取得' })
   @ApiOkResponse({
     type: WageTemplatesResponseDto,
@@ -56,6 +58,7 @@ export class WagesController {
 
   @Post('calculate-monthly')
   @Roles('admin', 'manager')
+  @ApiRolesNote('admin', 'manager')
   @ApiOperation({ summary: '月次工賃を計算' })
   @ApiOkResponse({
     type: WageCalculateResponseDto,
@@ -145,6 +148,7 @@ export class WagesController {
 
   @Post(':id/approve')
   @Roles('admin', 'manager')
+  @ApiRolesNote('admin', 'manager')
   @ApiOperation({ summary: '工賃計算を承認確定' })
   @ApiOkResponse({
     type: WageCalculationItemDto,
@@ -193,6 +197,7 @@ export class WagesController {
 
   @Get(':id/slip')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiRolesNote('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '工賃明細(JSON)を取得' })
   @ApiOkResponse({
     type: WageSlipResponseDto,
@@ -227,6 +232,7 @@ export class WagesController {
 
   @Get(':id/slip.csv')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiRolesNote('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '工賃明細(CSV)を出力' })
   @ApiProduces('text/csv')
   @ApiOkResponse({
@@ -266,6 +272,7 @@ export class WagesController {
 
   @Get(':id/slip.pdf')
   @Roles('admin', 'manager', 'staff', 'user')
+  @ApiRolesNote('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '工賃明細(PDF)を出力' })
   @ApiProduces('application/pdf')
   @ApiOkResponse({
