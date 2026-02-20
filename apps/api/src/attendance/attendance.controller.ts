@@ -5,11 +5,13 @@ import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { toSkipTake } from '../common/pagination.dto';
+import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { AttendanceListQueryDto, ClockInDto, ClockOutDto, CreateAttendanceCorrectionDto } from './attendance.dto';
 
 @ApiTags('Attendance')
 @ApiBearerAuth()
+@ApiCommonErrorResponses()
 @Controller()
 @UseGuards(RolesGuard)
 export class AttendanceController {

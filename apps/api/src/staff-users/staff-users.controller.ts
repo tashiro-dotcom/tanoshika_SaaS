@@ -6,11 +6,13 @@ import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
+import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { CreateStaffUserDto, PatchRoleDto, UpdateStaffUserDto } from './staff-users.dto';
 
 @ApiTags('Staff Users')
 @ApiBearerAuth()
+@ApiCommonErrorResponses()
 @Controller('staff-users')
 @UseGuards(RolesGuard)
 export class StaffUsersController {

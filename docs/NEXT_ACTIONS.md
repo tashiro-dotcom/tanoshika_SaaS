@@ -9,8 +9,8 @@
 
 ## 優先度 Medium
 1. CIで `guardrails-check` と `e2e` を必須ステータスに設定
-2. 統一エラーレスポンスのAPI契約追記（OpenAPIスキーマ反映）
-3. OpenAPIレスポンススキーマの明示化（主要エンドポイント）
+2. OpenAPIレスポンススキーマの明示化（主要正常系エンドポイント）
+3. OpenAPIにExampleレスポンス追加（現場説明用）
 
 ## 優先度 Low
 1. Next.js 14.2.30 の脆弱性対応アップデート

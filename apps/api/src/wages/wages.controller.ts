@@ -5,6 +5,7 @@ import { Roles, RolesGuard } from '../common/authz';
 import { AuditService } from '../common/audit.service';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
+import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { PrismaService } from '../prisma.service';
 import { CalculateMonthlyWagesDto } from './wages.dto';
 import { getMunicipalityTemplate, listMunicipalityTemplates, WageSlipView } from './wage-slip-template';
@@ -16,6 +17,7 @@ function hoursBetween(start: Date, end: Date | null): number {
 
 @ApiTags('Wages')
 @ApiBearerAuth()
+@ApiCommonErrorResponses()
 @Controller('wages')
 @UseGuards(RolesGuard)
 export class WagesController {

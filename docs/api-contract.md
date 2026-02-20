@@ -53,3 +53,20 @@
 ## OpenAPI
 - `GET /api-docs` (Swagger UI)
 - `GET /api-docs-json` (OpenAPI JSON)
+
+## Error Response (共通)
+APIエラー時は原則以下の形式で返却する。
+
+```json
+{
+  "statusCode": 400,
+  "message": "invalid_request",
+  "error": "BadRequestException",
+  "code": "P2002",
+  "timestamp": "2026-02-20T05:30:00.000Z",
+  "path": "/wages/calculate-monthly"
+}
+```
+
+- `code` は任意（主にPrismaエラー時）
+- `message` は `string` または `string[]`
