@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './common/global-exception.filter';
 
 export function configureApp(app: INestApplication) {
   app.enableCors();
@@ -14,6 +15,7 @@ export function configureApp(app: INestApplication) {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   const config = new DocumentBuilder()
     .setTitle('A型事業所向け支援管理API')
