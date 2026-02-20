@@ -6,6 +6,7 @@ import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
+import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { CreateServiceUserDto, UpdateServiceUserDto, UpdateServiceUserStatusDto } from './service-users.dto';
 import { ServiceUserResponseDto } from './service-users.response.dto';
@@ -23,6 +24,7 @@ export class ServiceUsersController {
 
   @Get()
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '利用者一覧を取得' })
   @ApiOkResponse({ type: ServiceUserResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
@@ -38,6 +40,7 @@ export class ServiceUsersController {
 
   @Post()
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '利用者を登録' })
   @ApiOkResponse({ type: ServiceUserResponseDto })
   async create(@Req() req: any, @Body() body: CreateServiceUserDto) {
@@ -74,6 +77,7 @@ export class ServiceUsersController {
 
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '利用者情報を更新' })
   @ApiOkResponse({ type: ServiceUserResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateServiceUserDto) {
@@ -107,6 +111,7 @@ export class ServiceUsersController {
 
   @Patch(':id/status')
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '利用者ステータスを更新' })
   @ApiOkResponse({ type: ServiceUserResponseDto })
   async updateStatus(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateServiceUserStatusDto) {

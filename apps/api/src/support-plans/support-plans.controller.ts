@@ -6,6 +6,7 @@ import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
+import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { CreateSupportPlanDto, UpdateSupportPlanDto } from './support-plans.dto';
 import { SupportPlanResponseDto } from './support-plans.response.dto';
@@ -23,6 +24,7 @@ export class SupportPlansController {
 
   @Get()
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援計画一覧を取得' })
   @ApiOkResponse({ type: SupportPlanResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
@@ -37,6 +39,7 @@ export class SupportPlansController {
 
   @Post()
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援計画を作成（版管理）' })
   @ApiOkResponse({ type: SupportPlanResponseDto })
   async create(@Req() req: any, @Body() body: CreateSupportPlanDto) {
@@ -75,6 +78,7 @@ export class SupportPlansController {
 
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援計画を更新' })
   @ApiOkResponse({ type: SupportPlanResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateSupportPlanDto) {

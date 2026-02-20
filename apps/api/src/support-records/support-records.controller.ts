@@ -6,6 +6,7 @@ import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
+import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { CreateSupportRecordDto, ListSupportRecordsQueryDto, UpdateSupportRecordDto } from './support-records.dto';
 import { SupportRecordResponseDto } from './support-records.response.dto';
@@ -23,6 +24,7 @@ export class SupportRecordsController {
 
   @Get()
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援記録一覧を取得' })
   @ApiOkResponse({ type: SupportRecordResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: ListSupportRecordsQueryDto) {
@@ -40,6 +42,7 @@ export class SupportRecordsController {
 
   @Post()
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援記録を作成' })
   @ApiOkResponse({ type: SupportRecordResponseDto })
   async create(@Req() req: any, @Body() body: CreateSupportRecordDto) {
@@ -69,6 +72,7 @@ export class SupportRecordsController {
 
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: '支援記録を更新' })
   @ApiOkResponse({ type: SupportRecordResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateSupportRecordDto) {

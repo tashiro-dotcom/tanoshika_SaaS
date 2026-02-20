@@ -6,6 +6,7 @@ import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
+import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { BulkShiftDto, CreateShiftDto, UpdateShiftDto } from './shifts.dto';
 import { BulkShiftResponseDto, ShiftResponseDto } from './shifts.response.dto';
@@ -23,6 +24,7 @@ export class ShiftsController {
 
   @Get()
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'シフト一覧を取得' })
   @ApiOkResponse({ type: ShiftResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
@@ -37,6 +39,7 @@ export class ShiftsController {
 
   @Post()
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'シフトを作成' })
   @ApiOkResponse({ type: ShiftResponseDto })
   async create(@Req() req: any, @Body() body: CreateShiftDto) {
@@ -68,6 +71,7 @@ export class ShiftsController {
 
   @Patch(':id')
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'シフトを更新' })
   @ApiOkResponse({ type: ShiftResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateShiftDto) {
@@ -99,6 +103,7 @@ export class ShiftsController {
 
   @Post('bulk')
   @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'シフトを一括作成' })
   @ApiOkResponse({ type: BulkShiftResponseDto })
   async bulk(@Req() req: any, @Body() body: BulkShiftDto) {

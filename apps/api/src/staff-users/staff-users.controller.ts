@@ -7,6 +7,7 @@ import { ORGANIZATION_DEFAULT } from '../common/constants';
 import { IdParamDto } from '../common/param.dto';
 import { PaginationQueryDto, toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
+import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { CreateStaffUserDto, PatchRoleDto, UpdateStaffUserDto } from './staff-users.dto';
 import { StaffUserResponseDto } from './staff-users.response.dto';
@@ -24,6 +25,7 @@ export class StaffUsersController {
 
   @Get()
   @Roles('admin', 'manager')
+  @ApiRolesNote('admin', 'manager')
   @ApiOperation({ summary: 'スタッフ一覧を取得' })
   @ApiOkResponse({ type: StaffUserResponseDto, isArray: true })
   list(@Req() req: any, @Query() query: PaginationQueryDto) {
@@ -48,6 +50,7 @@ export class StaffUsersController {
 
   @Post()
   @Roles('admin')
+  @ApiRolesNote('admin')
   @ApiOperation({ summary: 'スタッフを作成' })
   @ApiOkResponse({ type: StaffUserResponseDto })
   async create(@Req() req: any, @Body() body: CreateStaffUserDto) {
@@ -87,6 +90,7 @@ export class StaffUsersController {
 
   @Patch(':id')
   @Roles('admin')
+  @ApiRolesNote('admin')
   @ApiOperation({ summary: 'スタッフ情報を更新' })
   @ApiOkResponse({ type: StaffUserResponseDto })
   async update(@Req() req: any, @Param() params: IdParamDto, @Body() body: UpdateStaffUserDto) {
@@ -96,6 +100,7 @@ export class StaffUsersController {
 
   @Patch(':id/roles')
   @Roles('admin')
+  @ApiRolesNote('admin')
   @ApiOperation({ summary: 'スタッフロールを更新' })
   @ApiOkResponse({ type: StaffUserResponseDto })
   patchRole(@Req() req: any, @Param() params: IdParamDto, @Body() body: PatchRoleDto) {
