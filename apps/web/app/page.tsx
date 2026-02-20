@@ -36,6 +36,7 @@ export default function HomePage() {
         <h2>主要画面</h2>
         <ul>
           <li>スタッフダッシュボード（この画面）</li>
+          <li><a href="/admin">管理ダッシュボード（実運用UI）</a></li>
           <li><a href="/portal">利用者ポータル（閲覧）</a></li>
         </ul>
       </section>
