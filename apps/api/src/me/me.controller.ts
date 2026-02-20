@@ -17,7 +17,22 @@ export class MeController {
   @Get('attendance-summary')
   @Roles('user')
   @ApiOperation({ summary: '利用者向け勤怠サマリーを取得' })
-  @ApiOkResponse({ type: AttendanceSummaryResponseDto })
+  @ApiOkResponse({
+    type: AttendanceSummaryResponseDto,
+    example: {
+      serviceUserId: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+      totalRecords: 2,
+      latest: [
+        {
+          id: '89335df7-b64c-45af-a4f5-941aa7f4ee58',
+          serviceUserId: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+          method: 'web',
+          clockInAt: '2026-02-20T00:00:00.000Z',
+          clockOutAt: '2026-02-20T08:00:00.000Z',
+        },
+      ],
+    },
+  })
   async attendanceSummary(@Req() req: any) {
     const logs = await this.prisma.attendanceLog.findMany({
       where: {
@@ -38,7 +53,22 @@ export class MeController {
   @Get('wage-summary')
   @Roles('user')
   @ApiOperation({ summary: '利用者向け工賃サマリーを取得' })
-  @ApiOkResponse({ type: WageSummaryResponseDto })
+  @ApiOkResponse({
+    type: WageSummaryResponseDto,
+    example: {
+      serviceUserId: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+      totalMonths: 2,
+      latest: [
+        {
+          id: 'd7bcf582-60ba-4825-a908-7e7c7f2b8c4f',
+          year: 2026,
+          month: 2,
+          netAmount: 144600,
+          status: 'approved',
+        },
+      ],
+    },
+  })
   async wageSummary(@Req() req: any) {
     const rows = await this.prisma.wageCalculation.findMany({
       where: {
@@ -59,7 +89,25 @@ export class MeController {
   @Get('support-summary')
   @Roles('user')
   @ApiOperation({ summary: '利用者向け支援サマリーを取得' })
-  @ApiOkResponse({ type: SupportSummaryResponseDto })
+  @ApiOkResponse({
+    type: SupportSummaryResponseDto,
+    example: {
+      serviceUserId: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+      latestPlan: {
+        id: '2b70f8b2-bc85-4f69-a3f1-df592e9082aa',
+        version: 2,
+        goal: '一般就労に向けた作業安定化',
+      },
+      latestRecords: [
+        {
+          id: '14ed5de2-0d2c-4a26-adf3-7ec7fa9c70f2',
+          recordType: 'daily',
+          content: '本日の作業状況',
+          createdAt: '2026-02-20T05:00:00.000Z',
+        },
+      ],
+    },
+  })
   async supportSummary(@Req() req: any) {
     const [records, latestPlan] = await Promise.all([
       this.prisma.supportRecord.findMany({

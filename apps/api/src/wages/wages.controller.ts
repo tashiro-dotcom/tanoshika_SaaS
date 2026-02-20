@@ -35,7 +35,17 @@ export class WagesController {
   @Get('templates')
   @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: '工賃明細の自治体テンプレート一覧を取得' })
-  @ApiOkResponse({ type: WageTemplatesResponseDto })
+  @ApiOkResponse({
+    type: WageTemplatesResponseDto,
+    example: {
+      current: { code: 'fukuoka', label: '福岡県様式（MVP）' },
+      available: [
+        { code: 'fukuoka', label: '福岡県様式（MVP）' },
+        { code: 'kumamoto', label: '熊本県様式（MVP）' },
+        { code: 'saga', label: '佐賀県様式（MVP）' },
+      ],
+    },
+  })
   listTemplates() {
     const current = getMunicipalityTemplate();
     return {
@@ -47,7 +57,29 @@ export class WagesController {
   @Post('calculate-monthly')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: '月次工賃を計算' })
-  @ApiOkResponse({ type: WageCalculateResponseDto })
+  @ApiOkResponse({
+    type: WageCalculateResponseDto,
+    example: {
+      count: 1,
+      items: [
+        {
+          id: 'd7bcf582-60ba-4825-a908-7e7c7f2b8c4f',
+          organizationId: 'org-1',
+          serviceUserId: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+          year: 2026,
+          month: 2,
+          totalHours: 120.5,
+          hourlyRate: 1200,
+          grossAmount: 144600,
+          deductions: 0,
+          netAmount: 144600,
+          status: 'calculated',
+          createdAt: '2026-02-20T05:00:00.000Z',
+          updatedAt: '2026-02-20T05:00:00.000Z',
+        },
+      ],
+    },
+  })
   async calculate(@Req() req: any, @Body() body: CalculateMonthlyWagesDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     const start = new Date(Date.UTC(body.year, body.month - 1, 1));
@@ -114,7 +146,24 @@ export class WagesController {
   @Post(':id/approve')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: '工賃計算を承認確定' })
-  @ApiOkResponse({ type: WageCalculationItemDto })
+  @ApiOkResponse({
+    type: WageCalculationItemDto,
+    example: {
+      id: 'd7bcf582-60ba-4825-a908-7e7c7f2b8c4f',
+      organizationId: 'org-1',
+      serviceUserId: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+      year: 2026,
+      month: 2,
+      totalHours: 120.5,
+      hourlyRate: 1200,
+      grossAmount: 144600,
+      deductions: 0,
+      netAmount: 144600,
+      status: 'approved',
+      createdAt: '2026-02-20T05:00:00.000Z',
+      updatedAt: '2026-02-20T05:03:00.000Z',
+    },
+  })
   async approve(@Req() req: any, @Param() params: IdParamDto) {
     const { id } = params;
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
@@ -145,7 +194,28 @@ export class WagesController {
   @Get(':id/slip')
   @Roles('admin', 'manager', 'staff', 'user')
   @ApiOperation({ summary: '工賃明細(JSON)を取得' })
-  @ApiOkResponse({ type: WageSlipResponseDto })
+  @ApiOkResponse({
+    type: WageSlipResponseDto,
+    example: {
+      slipId: 'd7bcf582-60ba-4825-a908-7e7c7f2b8c4f',
+      organizationId: 'org-1',
+      organizationName: 'A型事業所 本店',
+      serviceUserId: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+      serviceUserName: 'E2E利用者',
+      month: '2026-02',
+      closingDate: '2026-02-28',
+      totalHours: 120.5,
+      hourlyRate: 1200,
+      grossAmount: 144600,
+      deductions: 0,
+      netAmount: 144600,
+      status: 'approved',
+      statusLabel: '確定済み',
+      remarks: '管理者承認済み',
+      approverId: 'admin-user-id',
+      issuedAt: '2026-02-20T05:03:00.000Z',
+    },
+  })
   async slip(@Req() req: any, @Param() params: IdParamDto) {
     const { id } = params;
     const view = await this.getSlipViewOrThrow(req, id);
