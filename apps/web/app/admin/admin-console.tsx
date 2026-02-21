@@ -31,6 +31,40 @@ type WageTemplatesResponse = {
   available: Array<{ code: string; label: string }>;
 };
 
+type WageCalculationItem = {
+  id: string;
+  serviceUserId: string;
+  year: number;
+  month: number;
+  totalHours: number;
+  hourlyRate: number;
+  grossAmount: number;
+  netAmount: number;
+  status: string;
+};
+
+type WageCalculateResponse = {
+  count: number;
+  items: WageCalculationItem[];
+};
+
+type WageSlip = {
+  slipId: string;
+  organizationName: string;
+  serviceUserName: string;
+  month: string;
+  totalHours: number;
+  hourlyRate: number;
+  grossAmount: number;
+  deductions: number;
+  netAmount: number;
+  status: string;
+  statusLabel: string;
+  remarks: string;
+  approverId: string;
+  issuedAt: string;
+};
+
 type LoginResponse = {
   mfaRequired: boolean;
   challengeToken: string;
@@ -87,6 +121,12 @@ async function sendJson<T>(method: 'POST' | 'PATCH', path: string, body: unknown
   return (await res.json()) as T;
 }
 
+function getFilenameFromContentDisposition(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  const matched = value.match(/filename="?([^"]+)"?/i);
+  return matched?.[1] || fallback;
+}
+
 export default function AdminConsole() {
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('Admin123!');
@@ -103,6 +143,12 @@ export default function AdminConsole() {
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
   const [attendanceCorrections, setAttendanceCorrections] = useState<AttendanceCorrection[]>([]);
   const [wageTemplates, setWageTemplates] = useState<WageTemplatesResponse | null>(null);
+  const [wageCalculations, setWageCalculations] = useState<WageCalculationItem[]>([]);
+  const [wageSlip, setWageSlip] = useState<WageSlip | null>(null);
+  const [wageYear, setWageYear] = useState(new Date().getFullYear());
+  const [wageMonth, setWageMonth] = useState(new Date().getMonth() + 1);
+  const [approveWageId, setApproveWageId] = useState('');
+  const [slipWageId, setSlipWageId] = useState('');
   const [newFullName, setNewFullName] = useState('');
   const [newDisabilityCategory, setNewDisabilityCategory] = useState('');
   const [newContractDate, setNewContractDate] = useState('');
@@ -257,6 +303,104 @@ export default function AdminConsole() {
       setOpsInfo('工賃テンプレートを取得しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '工賃テンプレートの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function calculateMonthlyWages(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      const data = await postJson<WageCalculateResponse>(
+        '/wages/calculate-monthly',
+        { year: wageYear, month: wageMonth },
+        accessToken.trim(),
+      );
+      setWageCalculations(data.items);
+      if (data.items.length > 0) {
+        setApproveWageId(data.items[0].id);
+        setSlipWageId(data.items[0].id);
+      }
+      setOpsInfo(`月次工賃を計算しました（${data.count}件）。`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '月次工賃計算に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approveWageCalculation(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady || !approveWageId.trim()) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      const item = await postJson<WageCalculationItem>(
+        `/wages/${approveWageId.trim()}/approve`,
+        {},
+        accessToken.trim(),
+      );
+      setWageCalculations((prev) => [item, ...prev.filter((x) => x.id !== item.id)]);
+      setSlipWageId(item.id);
+      setOpsInfo('工賃計算を承認しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '工賃承認に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadWageSlipJson(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady || !slipWageId.trim()) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      const item = await fetchJson<WageSlip>(`/wages/${slipWageId.trim()}/slip`, accessToken.trim());
+      setWageSlip(item);
+      setOpsInfo('工賃明細(JSON)を取得しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '工賃明細(JSON)の取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function downloadWageSlip(format: 'csv' | 'pdf') {
+    if (!tokenReady || !slipWageId.trim()) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      const res = await fetch(`${apiBaseUrl()}/wages/${slipWageId.trim()}/slip.${format}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken.trim()}`,
+        },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+      const blob = await res.blob();
+      const fallback = `wage-slip-${slipWageId.slice(0, 8)}.${format}`;
+      const filename = getFilenameFromContentDisposition(res.headers.get('content-disposition'), fallback);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setOpsInfo(`工賃明細(${format.toUpperCase()})をダウンロードしました。`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `工賃明細(${format.toUpperCase()})の取得に失敗しました`);
     } finally {
       setLoading(false);
     }
@@ -645,8 +789,74 @@ export default function AdminConsole() {
       </section>
 
       <section className="card">
-        <h2>工賃テンプレート</h2>
-        <form onSubmit={loadWageTemplates}>
+        <h2>工賃管理</h2>
+        <form onSubmit={calculateMonthlyWages}>
+          <h3 style={{ margin: '0 0 8px' }}>月次工賃計算</h3>
+          <div className="grid-2">
+            <label className="field">
+              <span>年</span>
+              <input
+                type="number"
+                value={wageYear}
+                onChange={(e) => setWageYear(Number(e.target.value))}
+                min={2020}
+                max={2100}
+              />
+            </label>
+            <label className="field">
+              <span>月</span>
+              <input
+                type="number"
+                value={wageMonth}
+                onChange={(e) => setWageMonth(Number(e.target.value))}
+                min={1}
+                max={12}
+              />
+            </label>
+          </div>
+          <button disabled={!tokenReady || loading} type="submit">月次工賃を計算</button>
+        </form>
+        <form onSubmit={approveWageCalculation} style={{ marginTop: 12 }}>
+          <h3 style={{ margin: '0 0 8px' }}>工賃承認</h3>
+          <label className="field">
+            <span>工賃計算ID</span>
+            <input
+              value={approveWageId}
+              onChange={(e) => setApproveWageId(e.target.value)}
+              placeholder="UUIDを入力（下表から選択可）"
+            />
+          </label>
+          <button disabled={!tokenReady || loading || !approveWageId.trim()} type="submit">工賃を承認</button>
+        </form>
+        <form onSubmit={loadWageSlipJson} style={{ marginTop: 12 }}>
+          <h3 style={{ margin: '0 0 8px' }}>工賃明細</h3>
+          <label className="field">
+            <span>対象工賃ID</span>
+            <input
+              value={slipWageId}
+              onChange={(e) => setSlipWageId(e.target.value)}
+              placeholder="UUIDを入力（下表から選択可）"
+            />
+          </label>
+          <div className="actions">
+            <button disabled={!tokenReady || loading || !slipWageId.trim()} type="submit">明細(JSON)取得</button>
+            <button
+              disabled={!tokenReady || loading || !slipWageId.trim()}
+              type="button"
+              onClick={() => downloadWageSlip('csv')}
+            >
+              明細CSV
+            </button>
+            <button
+              disabled={!tokenReady || loading || !slipWageId.trim()}
+              type="button"
+              onClick={() => downloadWageSlip('pdf')}
+            >
+              明細PDF
+            </button>
+          </div>
+        </form>
+        <form onSubmit={loadWageTemplates} style={{ marginTop: 12 }}>
           <button disabled={!tokenReady || loading} type="submit">テンプレートを取得</button>
         </form>
         {wageTemplates ? (
@@ -661,6 +871,49 @@ export default function AdminConsole() {
         ) : (
           <p className="small">データ未取得</p>
         )}
+        <table className="table" style={{ marginTop: 12 }}>
+          <thead>
+            <tr>
+              <th>計算ID</th>
+              <th>対象</th>
+              <th>時間</th>
+              <th>支給額</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody>
+            {wageCalculations.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <button type="button" className="link-button" onClick={() => { setApproveWageId(item.id); setSlipWageId(item.id); }}>
+                    {item.id.slice(0, 8)}
+                  </button>
+                </td>
+                <td>{item.year}-{String(item.month).padStart(2, '0')} / {item.serviceUserId.slice(0, 8)}</td>
+                <td>{item.totalHours}h</td>
+                <td>{item.netAmount.toLocaleString('ja-JP')}円</td>
+                <td>{item.status}</td>
+              </tr>
+            ))}
+            {wageCalculations.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="small">計算データ未作成</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+        {wageSlip ? (
+          <table className="table" style={{ marginTop: 12 }}>
+            <tbody>
+              <tr><th>利用者</th><td>{wageSlip.serviceUserName}</td></tr>
+              <tr><th>対象月</th><td>{wageSlip.month}</td></tr>
+              <tr><th>総時間</th><td>{wageSlip.totalHours}h</td></tr>
+              <tr><th>時給</th><td>{wageSlip.hourlyRate.toLocaleString('ja-JP')}円</td></tr>
+              <tr><th>支給額</th><td>{wageSlip.netAmount.toLocaleString('ja-JP')}円</td></tr>
+              <tr><th>状態</th><td>{wageSlip.statusLabel}</td></tr>
+            </tbody>
+          </table>
+        ) : null}
       </section>
     </div>
   );
