@@ -43,6 +43,7 @@
 - `/admin` の勤怠管理に修正申請フォーム（`POST /attendance-corrections`）と承認フォーム（`POST /attendance-corrections/:id/approve`）を追加
 - `/admin` の工賃管理に月次計算（`POST /wages/calculate-monthly`）・承認（`POST /wages/:id/approve`）・明細取得（`GET /wages/:id/slip(.json/.csv/.pdf)`）UIを追加
 - `/admin` のAPIエラー表示をコードベースで標準化し、連続操作時に状態が崩れやすい勤怠再取得処理を共通化
+- `/admin` の勤怠管理に打刻実行UI（`POST /attendance/clock-in`, `POST /attendance/clock-out`）を追加し、現場運用導線を補完
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
