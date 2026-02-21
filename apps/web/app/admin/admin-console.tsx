@@ -78,6 +78,36 @@ type TokenPairResponse = {
 };
 
 const serviceUserStatuses = ['tour', 'trial', 'interview', 'active', 'leaving', 'left'] as const;
+const apiErrorCodeMessages: Record<string, string> = {
+  unauthorized: '認証に失敗しました。ログイン状態を確認してください。',
+  forbidden: 'この操作を実行する権限がありません。',
+  organization_forbidden: '他組織データへのアクセスは許可されていません。',
+  service_user_not_found: '対象の利用者が見つかりません。',
+  attendance_not_found: '対象の勤怠データが見つかりません。',
+  not_found: '対象データが見つかりません。',
+  invalid_date_range: '日付範囲が不正です（from は to 以下にしてください）。',
+  open_clock_in_not_found: '未退勤の出勤打刻が見つかりません。',
+  validation_error: '入力値が不正です。必須項目と形式を確認してください。',
+};
+
+type ApiErrorPayload = {
+  statusCode?: number;
+  message?: string | string[];
+  error?: string;
+  code?: string;
+};
+
+function resolveApiErrorMessage(status: number, text: string): string {
+  try {
+    const payload = JSON.parse(text) as ApiErrorPayload;
+    if (payload.code && apiErrorCodeMessages[payload.code]) return apiErrorCodeMessages[payload.code];
+    if (typeof payload.message === 'string' && payload.message.trim().length > 0) return payload.message;
+    if (Array.isArray(payload.message) && payload.message.length > 0) return payload.message.join(', ');
+  } catch {
+    // noop
+  }
+  return `API呼び出しに失敗しました（HTTP ${status}）`;
+}
 
 function apiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
@@ -92,7 +122,7 @@ async function fetchJson<T>(path: string, token: string): Promise<T> {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`HTTP ${res.status}: ${text}`);
+    throw new Error(resolveApiErrorMessage(res.status, text));
   }
   return (await res.json()) as T;
 }
@@ -116,7 +146,7 @@ async function sendJson<T>(method: 'POST' | 'PATCH', path: string, body: unknown
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`HTTP ${res.status}: ${text}`);
+    throw new Error(resolveApiErrorMessage(res.status, text));
   }
   return (await res.json()) as T;
 }
@@ -164,6 +194,14 @@ export default function AdminConsole() {
   const [approveCorrectionId, setApproveCorrectionId] = useState('');
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
+
+  async function refreshAttendanceLogs(token: string) {
+    const data = await fetchJson<AttendanceLog[]>('/attendance?page=1&limit=20', token.trim());
+    setAttendanceLogs(data);
+    if (data.length > 0 && !correctionTargetLogId) {
+      setCorrectionTargetLogId(data[0].id);
+    }
+  }
 
   async function refreshServiceUsers(token: string) {
     const data = await fetchJson<ServiceUser[]>('/service-users?page=1&limit=20', token.trim());
@@ -279,11 +317,7 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchJson<AttendanceLog[]>('/attendance?page=1&limit=20', accessToken.trim());
-      setAttendanceLogs(data);
-      if (data.length > 0 && !correctionTargetLogId) {
-        setCorrectionTargetLogId(data[0].id);
-      }
+      await refreshAttendanceLogs(accessToken.trim());
       setOpsInfo('勤怠一覧を更新しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '勤怠一覧の取得に失敗しました');
@@ -385,7 +419,7 @@ export default function AdminConsole() {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`HTTP ${res.status}: ${text}`);
+        throw new Error(resolveApiErrorMessage(res.status, text));
       }
       const blob = await res.blob();
       const fallback = `wage-slip-${slipWageId.slice(0, 8)}.${format}`;
@@ -504,7 +538,7 @@ export default function AdminConsole() {
         accessToken.trim(),
       );
       setAttendanceCorrections((prev) => [item, ...prev.filter((x) => x.id !== item.id)]);
-      await loadAttendance({ preventDefault: () => {} } as FormEvent);
+      await refreshAttendanceLogs(accessToken.trim());
       setOpsInfo('勤怠修正申請を承認しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '勤怠修正申請の承認に失敗しました');
