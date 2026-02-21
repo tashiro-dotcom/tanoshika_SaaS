@@ -41,6 +41,7 @@
 - `/admin` にログイン導線（`/auth/login` -> `/auth/mfa/verify`）とトークン更新/ログアウト（`/auth/refresh` `/auth/logout`）を実装し、トークン手入力を不要化
 - `/admin` に利用者の新規登録フォーム（`POST /service-users`）とステータス更新フォーム（`PATCH /service-users/:id/status`）を実装
 - `/admin` の勤怠管理に修正申請フォーム（`POST /attendance-corrections`）と承認フォーム（`POST /attendance-corrections/:id/approve`）を追加
+- `/admin` の工賃管理に月次計算（`POST /wages/calculate-monthly`）・承認（`POST /wages/:id/approve`）・明細取得（`GET /wages/:id/slip(.json/.csv/.pdf)`）UIを追加
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
