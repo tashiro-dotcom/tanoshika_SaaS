@@ -53,6 +53,13 @@ textarea {
   font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", monospace;
 }
 
+input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.95rem;
+}
+
 button {
   border: 1px solid #0f766e;
   background: #0f766e;
@@ -80,4 +87,15 @@ button:disabled {
   padding: 8px;
   vertical-align: top;
   font-size: 0.92rem;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ok {
+  color: #15803d;
+  font-weight: 700;
 }
