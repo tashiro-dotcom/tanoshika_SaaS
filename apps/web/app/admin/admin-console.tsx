@@ -17,6 +17,15 @@ type AttendanceLog = {
   clockOutAt: string | null;
 };
 
+type AttendanceCorrection = {
+  id: string;
+  attendanceLogId: string;
+  reason: string;
+  status: string;
+  requestedClockInAt: string | null;
+  requestedClockOutAt: string | null;
+};
+
 type WageTemplatesResponse = {
   current: { code: string; label: string };
   available: Array<{ code: string; label: string }>;
@@ -92,6 +101,7 @@ export default function AdminConsole() {
 
   const [serviceUsers, setServiceUsers] = useState<ServiceUser[]>([]);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
+  const [attendanceCorrections, setAttendanceCorrections] = useState<AttendanceCorrection[]>([]);
   const [wageTemplates, setWageTemplates] = useState<WageTemplatesResponse | null>(null);
   const [newFullName, setNewFullName] = useState('');
   const [newDisabilityCategory, setNewDisabilityCategory] = useState('');
@@ -101,6 +111,11 @@ export default function AdminConsole() {
   const [newStatus, setNewStatus] = useState<(typeof serviceUserStatuses)[number]>('active');
   const [statusTargetUserId, setStatusTargetUserId] = useState('');
   const [statusValue, setStatusValue] = useState<(typeof serviceUserStatuses)[number]>('active');
+  const [correctionTargetLogId, setCorrectionTargetLogId] = useState('');
+  const [correctionReason, setCorrectionReason] = useState('');
+  const [correctionClockInAt, setCorrectionClockInAt] = useState('');
+  const [correctionClockOutAt, setCorrectionClockOutAt] = useState('');
+  const [approveCorrectionId, setApproveCorrectionId] = useState('');
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
 
@@ -220,6 +235,9 @@ export default function AdminConsole() {
     try {
       const data = await fetchJson<AttendanceLog[]>('/attendance?page=1&limit=20', accessToken.trim());
       setAttendanceLogs(data);
+      if (data.length > 0 && !correctionTargetLogId) {
+        setCorrectionTargetLogId(data[0].id);
+      }
       setOpsInfo('勤怠一覧を更新しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '勤怠一覧の取得に失敗しました');
@@ -294,6 +312,58 @@ export default function AdminConsole() {
       setOpsInfo('利用者ステータスを更新しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ステータス更新に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createAttendanceCorrection(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady || !correctionTargetLogId || !correctionReason.trim()) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      const item = await postJson<AttendanceCorrection>(
+        '/attendance-corrections',
+        {
+          attendanceLogId: correctionTargetLogId,
+          reason: correctionReason.trim(),
+          requestedClockInAt: correctionClockInAt ? new Date(correctionClockInAt).toISOString() : undefined,
+          requestedClockOutAt: correctionClockOutAt ? new Date(correctionClockOutAt).toISOString() : undefined,
+        },
+        accessToken.trim(),
+      );
+      setAttendanceCorrections((prev) => [item, ...prev.filter((x) => x.id !== item.id)]);
+      setApproveCorrectionId(item.id);
+      setCorrectionReason('');
+      setCorrectionClockInAt('');
+      setCorrectionClockOutAt('');
+      setOpsInfo('勤怠修正申請を作成しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '勤怠修正申請の作成に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approveAttendanceCorrection(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady || !approveCorrectionId.trim()) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      const item = await postJson<AttendanceCorrection>(
+        `/attendance-corrections/${approveCorrectionId.trim()}/approve`,
+        {},
+        accessToken.trim(),
+      );
+      setAttendanceCorrections((prev) => [item, ...prev.filter((x) => x.id !== item.id)]);
+      await loadAttendance({ preventDefault: () => {} } as FormEvent);
+      setOpsInfo('勤怠修正申請を承認しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '勤怠修正申請の承認に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -452,9 +522,63 @@ export default function AdminConsole() {
         <form onSubmit={loadAttendance}>
           <button disabled={!tokenReady || loading} type="submit">勤怠一覧を取得</button>
         </form>
+        <form onSubmit={createAttendanceCorrection} style={{ marginTop: 12 }}>
+          <h3 style={{ margin: '0 0 8px' }}>修正申請</h3>
+          <label className="field">
+            <span>対象勤怠ログ</span>
+            <select
+              value={correctionTargetLogId}
+              onChange={(e) => setCorrectionTargetLogId(e.target.value)}
+              disabled={attendanceLogs.length === 0}
+            >
+              {attendanceLogs.length === 0 ? (
+                <option value="">勤怠一覧を先に取得</option>
+              ) : (
+                attendanceLogs.map((log) => (
+                  <option key={log.id} value={log.id}>
+                    {log.id.slice(0, 8)} / {log.serviceUserId.slice(0, 8)}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+          <label className="field">
+            <span>修正理由（必須）</span>
+            <input value={correctionReason} onChange={(e) => setCorrectionReason(e.target.value)} placeholder="退勤時刻修正" />
+          </label>
+          <div className="grid-2">
+            <label className="field">
+              <span>希望出勤時刻</span>
+              <input type="datetime-local" value={correctionClockInAt} onChange={(e) => setCorrectionClockInAt(e.target.value)} />
+            </label>
+            <label className="field">
+              <span>希望退勤時刻</span>
+              <input type="datetime-local" value={correctionClockOutAt} onChange={(e) => setCorrectionClockOutAt(e.target.value)} />
+            </label>
+          </div>
+          <button
+            disabled={!tokenReady || loading || !correctionTargetLogId || !correctionReason.trim()}
+            type="submit"
+          >
+            修正申請を作成
+          </button>
+        </form>
+        <form onSubmit={approveAttendanceCorrection} style={{ marginTop: 12 }}>
+          <h3 style={{ margin: '0 0 8px' }}>修正承認</h3>
+          <label className="field">
+            <span>修正申請ID</span>
+            <input
+              value={approveCorrectionId}
+              onChange={(e) => setApproveCorrectionId(e.target.value)}
+              placeholder="UUIDを入力（下表から選択可）"
+            />
+          </label>
+          <button disabled={!tokenReady || loading || !approveCorrectionId.trim()} type="submit">申請を承認</button>
+        </form>
         <table className="table">
           <thead>
             <tr>
+              <th>ログID</th>
               <th>利用者ID</th>
               <th>方法</th>
               <th>出勤</th>
@@ -464,7 +588,8 @@ export default function AdminConsole() {
           <tbody>
             {attendanceLogs.map((log) => (
               <tr key={log.id}>
-                <td>{log.serviceUserId}</td>
+                <td>{log.id.slice(0, 8)}</td>
+                <td>{log.serviceUserId.slice(0, 8)}</td>
                 <td>{log.method}</td>
                 <td>{new Date(log.clockInAt).toLocaleString('ja-JP')}</td>
                 <td>{log.clockOutAt ? new Date(log.clockOutAt).toLocaleString('ja-JP') : '-'}</td>
@@ -472,7 +597,47 @@ export default function AdminConsole() {
             ))}
             {attendanceLogs.length === 0 ? (
               <tr>
-                <td colSpan={4} className="small">データ未取得</td>
+                <td colSpan={5} className="small">データ未取得</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+        <table className="table" style={{ marginTop: 12 }}>
+          <thead>
+            <tr>
+              <th>申請ID</th>
+              <th>対象ログ</th>
+              <th>状態</th>
+              <th>理由</th>
+              <th>希望時刻</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendanceCorrections.map((corr) => (
+              <tr key={corr.id}>
+                <td>
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => setApproveCorrectionId(corr.id)}
+                    title={corr.id}
+                  >
+                    {corr.id.slice(0, 8)}
+                  </button>
+                </td>
+                <td>{corr.attendanceLogId.slice(0, 8)}</td>
+                <td>{corr.status}</td>
+                <td>{corr.reason}</td>
+                <td>
+                  {corr.requestedClockInAt ? new Date(corr.requestedClockInAt).toLocaleString('ja-JP') : '-'}
+                  {' / '}
+                  {corr.requestedClockOutAt ? new Date(corr.requestedClockOutAt).toLocaleString('ja-JP') : '-'}
+                </td>
+              </tr>
+            ))}
+            {attendanceCorrections.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="small">申請データ未作成</td>
               </tr>
             ) : null}
           </tbody>
