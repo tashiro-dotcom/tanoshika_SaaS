@@ -114,6 +114,15 @@ button:disabled {
   font-weight: 700;
 }
 
+.link-button {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .grid-2 {
     grid-template-columns: 1fr;

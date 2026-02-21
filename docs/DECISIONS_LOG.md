@@ -40,6 +40,7 @@
 - 管理画面の土台として `/admin` を追加し、MVP主要API（利用者一覧/勤怠一覧/工賃テンプレート）への接続確認UIを実装
 - `/admin` にログイン導線（`/auth/login` -> `/auth/mfa/verify`）とトークン更新/ログアウト（`/auth/refresh` `/auth/logout`）を実装し、トークン手入力を不要化
 - `/admin` に利用者の新規登録フォーム（`POST /service-users`）とステータス更新フォーム（`PATCH /service-users/:id/status`）を実装
+- `/admin` の勤怠管理に修正申請フォーム（`POST /attendance-corrections`）と承認フォーム（`POST /attendance-corrections/:id/approve`）を追加
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
