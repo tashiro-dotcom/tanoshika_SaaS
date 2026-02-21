@@ -60,6 +60,14 @@ input {
   font-size: 0.95rem;
 }
 
+select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
 button {
   border: 1px solid #0f766e;
   background: #0f766e;
@@ -95,7 +103,19 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .ok {
   color: #15803d;
   font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
 }

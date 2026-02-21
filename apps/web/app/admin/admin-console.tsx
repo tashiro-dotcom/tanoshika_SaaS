@@ -34,6 +34,8 @@ type TokenPairResponse = {
   expiresIn: number;
 };
 
+const serviceUserStatuses = ['tour', 'trial', 'interview', 'active', 'leaving', 'left'] as const;
+
 function apiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
 }
@@ -53,8 +55,16 @@ async function fetchJson<T>(path: string, token: string): Promise<T> {
 }
 
 async function postJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+  return sendJson<T>('POST', path, body, token);
+}
+
+async function patchJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+  return sendJson<T>('PATCH', path, body, token);
+}
+
+async function sendJson<T>(method: 'POST' | 'PATCH', path: string, body: unknown, token?: string): Promise<T> {
   const res = await fetch(`${apiBaseUrl()}${path}`, {
-    method: 'POST',
+    method,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -76,20 +86,38 @@ export default function AdminConsole() {
   const [accessToken, setAccessToken] = useState('');
   const [refreshToken, setRefreshToken] = useState('');
   const [sessionInfo, setSessionInfo] = useState('');
+  const [opsInfo, setOpsInfo] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const [serviceUsers, setServiceUsers] = useState<ServiceUser[]>([]);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
   const [wageTemplates, setWageTemplates] = useState<WageTemplatesResponse | null>(null);
+  const [newFullName, setNewFullName] = useState('');
+  const [newDisabilityCategory, setNewDisabilityCategory] = useState('');
+  const [newContractDate, setNewContractDate] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newEmergencyContact, setNewEmergencyContact] = useState('');
+  const [newStatus, setNewStatus] = useState<(typeof serviceUserStatuses)[number]>('active');
+  const [statusTargetUserId, setStatusTargetUserId] = useState('');
+  const [statusValue, setStatusValue] = useState<(typeof serviceUserStatuses)[number]>('active');
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
+
+  async function refreshServiceUsers(token: string) {
+    const data = await fetchJson<ServiceUser[]>('/service-users?page=1&limit=20', token.trim());
+    setServiceUsers(data);
+    if (data.length > 0 && !statusTargetUserId) {
+      setStatusTargetUserId(data[0].id);
+    }
+  }
 
   async function login(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSessionInfo('');
+    setOpsInfo('');
     try {
       const data = await postJson<LoginResponse>('/auth/login', {
         email: email.trim(),
@@ -110,6 +138,7 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     setSessionInfo('');
+    setOpsInfo('');
     try {
       const data = await postJson<TokenPairResponse>('/auth/mfa/verify', {
         challengeToken: challengeToken.trim(),
@@ -130,6 +159,7 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     setSessionInfo('');
+    setOpsInfo('');
     try {
       const data = await postJson<TokenPairResponse>('/auth/refresh', {
         refreshToken: refreshToken.trim(),
@@ -149,6 +179,7 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     setSessionInfo('');
+    setOpsInfo('');
     try {
       await postJson<{ success: boolean }>('/auth/logout', {
         refreshToken: refreshToken.trim(),
@@ -157,6 +188,7 @@ export default function AdminConsole() {
       setRefreshToken('');
       setChallengeToken('');
       setOtp('');
+      setOpsInfo('');
       setSessionInfo('ログアウトしました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ログアウトに失敗しました');
@@ -171,8 +203,8 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchJson<ServiceUser[]>('/service-users?page=1&limit=20', accessToken.trim());
-      setServiceUsers(data);
+      await refreshServiceUsers(accessToken.trim());
+      setOpsInfo('利用者一覧を更新しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '利用者一覧の取得に失敗しました');
     } finally {
@@ -188,6 +220,7 @@ export default function AdminConsole() {
     try {
       const data = await fetchJson<AttendanceLog[]>('/attendance?page=1&limit=20', accessToken.trim());
       setAttendanceLogs(data);
+      setOpsInfo('勤怠一覧を更新しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '勤怠一覧の取得に失敗しました');
     } finally {
@@ -203,8 +236,64 @@ export default function AdminConsole() {
     try {
       const data = await fetchJson<WageTemplatesResponse>('/wages/templates', accessToken.trim());
       setWageTemplates(data);
+      setOpsInfo('工賃テンプレートを取得しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '工賃テンプレートの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createServiceUser(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady || !newFullName.trim()) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      await postJson<ServiceUser>(
+        '/service-users',
+        {
+          fullName: newFullName.trim(),
+          disabilityCategory: newDisabilityCategory.trim() || undefined,
+          contractDate: newContractDate || undefined,
+          phone: newPhone.trim() || undefined,
+          emergencyContact: newEmergencyContact.trim() || undefined,
+          status: newStatus,
+        },
+        accessToken.trim(),
+      );
+      await refreshServiceUsers(accessToken.trim());
+      setNewFullName('');
+      setNewDisabilityCategory('');
+      setNewContractDate('');
+      setNewPhone('');
+      setNewEmergencyContact('');
+      setNewStatus('active');
+      setOpsInfo('利用者を登録しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '利用者登録に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateServiceUserStatus(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady || !statusTargetUserId) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      await patchJson<ServiceUser>(
+        `/service-users/${statusTargetUserId}/status`,
+        { status: statusValue },
+        accessToken.trim(),
+      );
+      await refreshServiceUsers(accessToken.trim());
+      setOpsInfo('利用者ステータスを更新しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ステータス更新に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -245,6 +334,7 @@ export default function AdminConsole() {
           認証状態: {tokenReady ? <span className="ok">ログイン中</span> : '未ログイン'}
         </p>
         {sessionInfo ? <p className="small">{sessionInfo}</p> : null}
+        {opsInfo ? <p className="small">{opsInfo}</p> : null}
         <p className="small">API Base URL: {apiBaseUrl()}</p>
         {error ? <p className="error">{error}</p> : null}
       </section>
@@ -254,9 +344,86 @@ export default function AdminConsole() {
         <form onSubmit={loadServiceUsers}>
           <button disabled={!tokenReady || loading} type="submit">利用者一覧を取得</button>
         </form>
+        <form onSubmit={createServiceUser} style={{ marginTop: 12 }}>
+          <h3 style={{ margin: '0 0 8px' }}>新規登録</h3>
+          <label className="field">
+            <span>氏名（必須）</span>
+            <input value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="山田 太郎" />
+          </label>
+          <div className="grid-2">
+            <label className="field">
+              <span>障害区分</span>
+              <input value={newDisabilityCategory} onChange={(e) => setNewDisabilityCategory(e.target.value)} placeholder="身体" />
+            </label>
+            <label className="field">
+              <span>契約日</span>
+              <input type="date" value={newContractDate} onChange={(e) => setNewContractDate(e.target.value)} />
+            </label>
+          </div>
+          <div className="grid-2">
+            <label className="field">
+              <span>電話</span>
+              <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="09012345678" />
+            </label>
+            <label className="field">
+              <span>初期ステータス</span>
+              <select value={newStatus} onChange={(e) => setNewStatus(e.target.value as (typeof serviceUserStatuses)[number])}>
+                {serviceUserStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="field">
+            <span>緊急連絡先</span>
+            <input
+              value={newEmergencyContact}
+              onChange={(e) => setNewEmergencyContact(e.target.value)}
+              placeholder="母 09000000000"
+            />
+          </label>
+          <button disabled={!tokenReady || loading || !newFullName.trim()} type="submit">利用者を登録</button>
+        </form>
+        <form onSubmit={updateServiceUserStatus} style={{ marginTop: 12 }}>
+          <h3 style={{ margin: '0 0 8px' }}>ステータス更新</h3>
+          <div className="grid-2">
+            <label className="field">
+              <span>対象利用者</span>
+              <select
+                value={statusTargetUserId}
+                onChange={(e) => setStatusTargetUserId(e.target.value)}
+                disabled={serviceUsers.length === 0}
+              >
+                {serviceUsers.length === 0 ? (
+                  <option value="">一覧を先に取得</option>
+                ) : (
+                  serviceUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.fullName} ({user.id.slice(0, 8)})
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+            <label className="field">
+              <span>変更先ステータス</span>
+              <select value={statusValue} onChange={(e) => setStatusValue(e.target.value as (typeof serviceUserStatuses)[number])}>
+                {serviceUserStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button disabled={!tokenReady || loading || !statusTargetUserId} type="submit">ステータス更新</button>
+        </form>
         <table className="table">
           <thead>
             <tr>
+              <th>ID</th>
               <th>氏名</th>
               <th>ステータス</th>
               <th>組織</th>
@@ -265,6 +432,7 @@ export default function AdminConsole() {
           <tbody>
             {serviceUsers.map((user) => (
               <tr key={user.id}>
+                <td>{user.id.slice(0, 8)}</td>
                 <td>{user.fullName}</td>
                 <td>{user.status}</td>
                 <td>{user.organizationId}</td>
@@ -272,7 +440,7 @@ export default function AdminConsole() {
             ))}
             {serviceUsers.length === 0 ? (
               <tr>
-                <td colSpan={3} className="small">データ未取得</td>
+                <td colSpan={4} className="small">データ未取得</td>
               </tr>
             ) : null}
           </tbody>
