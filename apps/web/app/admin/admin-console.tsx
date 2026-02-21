@@ -22,6 +22,18 @@ type WageTemplatesResponse = {
   available: Array<{ code: string; label: string }>;
 };
 
+type LoginResponse = {
+  mfaRequired: boolean;
+  challengeToken: string;
+  email: string;
+};
+
+type TokenPairResponse = {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+};
+
 function apiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
 }
@@ -40,8 +52,30 @@ async function fetchJson<T>(path: string, token: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function postJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+  const res = await fetch(`${apiBaseUrl()}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return (await res.json()) as T;
+}
+
 export default function AdminConsole() {
-  const [token, setToken] = useState('');
+  const [email, setEmail] = useState('admin@example.com');
+  const [password, setPassword] = useState('Admin123!');
+  const [otp, setOtp] = useState('');
+  const [challengeToken, setChallengeToken] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [refreshToken, setRefreshToken] = useState('');
+  const [sessionInfo, setSessionInfo] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +83,87 @@ export default function AdminConsole() {
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
   const [wageTemplates, setWageTemplates] = useState<WageTemplatesResponse | null>(null);
 
-  const tokenReady = useMemo(() => token.trim().length > 0, [token]);
+  const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
+
+  async function login(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSessionInfo('');
+    try {
+      const data = await postJson<LoginResponse>('/auth/login', {
+        email: email.trim(),
+        password,
+      });
+      setChallengeToken(data.challengeToken);
+      setSessionInfo('ログイン成功。MFAコードを入力してください。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ログインに失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyMfa(e: FormEvent) {
+    e.preventDefault();
+    if (!challengeToken.trim() || !otp.trim()) return;
+    setLoading(true);
+    setError('');
+    setSessionInfo('');
+    try {
+      const data = await postJson<TokenPairResponse>('/auth/mfa/verify', {
+        challengeToken: challengeToken.trim(),
+        otp: otp.trim(),
+      });
+      setAccessToken(data.accessToken);
+      setRefreshToken(data.refreshToken);
+      setSessionInfo(`認証完了。Access Token有効期限: ${data.expiresIn}秒`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'MFA検証に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refreshSession() {
+    if (!refreshToken.trim()) return;
+    setLoading(true);
+    setError('');
+    setSessionInfo('');
+    try {
+      const data = await postJson<TokenPairResponse>('/auth/refresh', {
+        refreshToken: refreshToken.trim(),
+      });
+      setAccessToken(data.accessToken);
+      setRefreshToken(data.refreshToken);
+      setSessionInfo(`トークン更新完了。Access Token有効期限: ${data.expiresIn}秒`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'トークン更新に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function logout() {
+    if (!refreshToken.trim()) return;
+    setLoading(true);
+    setError('');
+    setSessionInfo('');
+    try {
+      await postJson<{ success: boolean }>('/auth/logout', {
+        refreshToken: refreshToken.trim(),
+      });
+      setAccessToken('');
+      setRefreshToken('');
+      setChallengeToken('');
+      setOtp('');
+      setSessionInfo('ログアウトしました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ログアウトに失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function loadServiceUsers(e: FormEvent) {
     e.preventDefault();
@@ -57,7 +171,7 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchJson<ServiceUser[]>('/service-users?page=1&limit=20', token.trim());
+      const data = await fetchJson<ServiceUser[]>('/service-users?page=1&limit=20', accessToken.trim());
       setServiceUsers(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '利用者一覧の取得に失敗しました');
@@ -72,7 +186,7 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchJson<AttendanceLog[]>('/attendance?page=1&limit=20', token.trim());
+      const data = await fetchJson<AttendanceLog[]>('/attendance?page=1&limit=20', accessToken.trim());
       setAttendanceLogs(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '勤怠一覧の取得に失敗しました');
@@ -87,7 +201,7 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchJson<WageTemplatesResponse>('/wages/templates', token.trim());
+      const data = await fetchJson<WageTemplatesResponse>('/wages/templates', accessToken.trim());
       setWageTemplates(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '工賃テンプレートの取得に失敗しました');
@@ -99,17 +213,38 @@ export default function AdminConsole() {
   return (
     <div className="grid">
       <section className="card">
-        <h2>接続設定</h2>
-        <p className="small">`/auth/mfa/verify` で取得した Access Token を貼り付けてください。</p>
-        <label className="field">
-          <span>Access Token</span>
-          <textarea
-            rows={4}
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          />
-        </label>
+        <h2>ログイン</h2>
+        <p className="small">メール/パスワード -&gt; MFAコード入力でセッションを開始します。</p>
+        <form onSubmit={login}>
+          <label className="field">
+            <span>メールアドレス</span>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@example.com" />
+          </label>
+          <label className="field">
+            <span>パスワード</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
+          </label>
+          <button disabled={loading} type="submit">ログイン（MFA開始）</button>
+        </form>
+        <form onSubmit={verifyMfa} style={{ marginTop: 12 }}>
+          <label className="field">
+            <span>MFAコード（6桁）</span>
+            <input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456" />
+          </label>
+          <button disabled={loading || !challengeToken.trim()} type="submit">MFA検証</button>
+        </form>
+        <div className="actions" style={{ marginTop: 12 }}>
+          <button disabled={loading || !refreshToken.trim()} type="button" onClick={refreshSession}>
+            トークン更新
+          </button>
+          <button disabled={loading || !refreshToken.trim()} type="button" onClick={logout}>
+            ログアウト
+          </button>
+        </div>
+        <p className="small" style={{ marginTop: 10 }}>
+          認証状態: {tokenReady ? <span className="ok">ログイン中</span> : '未ログイン'}
+        </p>
+        {sessionInfo ? <p className="small">{sessionInfo}</p> : null}
         <p className="small">API Base URL: {apiBaseUrl()}</p>
         {error ? <p className="error">{error}</p> : null}
       </section>
