@@ -192,6 +192,9 @@ export default function AdminConsole() {
   const [correctionClockInAt, setCorrectionClockInAt] = useState('');
   const [correctionClockOutAt, setCorrectionClockOutAt] = useState('');
   const [approveCorrectionId, setApproveCorrectionId] = useState('');
+  const [clockServiceUserId, setClockServiceUserId] = useState('');
+  const [clockMethod, setClockMethod] = useState('web');
+  const [clockLocation, setClockLocation] = useState('');
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
 
@@ -208,6 +211,9 @@ export default function AdminConsole() {
     setServiceUsers(data);
     if (data.length > 0 && !statusTargetUserId) {
       setStatusTargetUserId(data[0].id);
+    }
+    if (data.length > 0 && !clockServiceUserId) {
+      setClockServiceUserId(data[0].id);
     }
   }
 
@@ -525,6 +531,53 @@ export default function AdminConsole() {
     }
   }
 
+  async function clockIn(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady || !clockServiceUserId) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      await postJson<AttendanceLog>(
+        '/attendance/clock-in',
+        {
+          serviceUserId: clockServiceUserId,
+          method: clockMethod || 'web',
+          location: clockLocation.trim() || undefined,
+        },
+        accessToken.trim(),
+      );
+      await refreshAttendanceLogs(accessToken.trim());
+      setOpsInfo('出勤打刻を登録しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '出勤打刻に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function clockOut() {
+    if (!tokenReady || !clockServiceUserId) return;
+    setLoading(true);
+    setError('');
+    setOpsInfo('');
+    try {
+      await postJson<AttendanceLog>(
+        '/attendance/clock-out',
+        {
+          serviceUserId: clockServiceUserId,
+        },
+        accessToken.trim(),
+      );
+      await refreshAttendanceLogs(accessToken.trim());
+      setOpsInfo('退勤打刻を登録しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '退勤打刻に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function approveAttendanceCorrection(e: FormEvent) {
     e.preventDefault();
     if (!tokenReady || !approveCorrectionId.trim()) return;
@@ -697,6 +750,57 @@ export default function AdminConsole() {
 
       <section className="card">
         <h2>勤怠管理</h2>
+        <form onSubmit={clockIn}>
+          <h3 style={{ margin: '0 0 8px' }}>打刻実行</h3>
+          <label className="field">
+            <span>対象利用者</span>
+            <select
+              value={clockServiceUserId}
+              onChange={(e) => setClockServiceUserId(e.target.value)}
+              disabled={serviceUsers.length === 0}
+            >
+              {serviceUsers.length === 0 ? (
+                <option value="">利用者一覧を先に取得</option>
+              ) : (
+                serviceUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName} ({user.id.slice(0, 8)})
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+          <div className="grid-2">
+            <label className="field">
+              <span>打刻方法</span>
+              <select value={clockMethod} onChange={(e) => setClockMethod(e.target.value)}>
+                <option value="web">web</option>
+                <option value="qr">qr</option>
+                <option value="proxy">proxy</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>位置情報メモ</span>
+              <input
+                value={clockLocation}
+                onChange={(e) => setClockLocation(e.target.value)}
+                placeholder="福岡市中央区"
+              />
+            </label>
+          </div>
+          <div className="actions">
+            <button disabled={!tokenReady || loading || !clockServiceUserId} type="submit">出勤打刻</button>
+            <button
+              disabled={!tokenReady || loading || !clockServiceUserId}
+              type="button"
+              onClick={() => {
+                void clockOut();
+              }}
+            >
+              退勤打刻
+            </button>
+          </div>
+        </form>
         <form onSubmit={loadAttendance}>
           <button disabled={!tokenReady || loading} type="submit">勤怠一覧を取得</button>
         </form>
