@@ -602,8 +602,20 @@ export default function AdminConsole() {
 
   return (
     <div className="grid">
+      <section className="card guide-card">
+        <h2>最短手順ガイド（現場向け）</h2>
+        <ol className="guide-list">
+          <li>「ログイン」でMFA認証を完了する</li>
+          <li>「利用者一覧を取得」で対象利用者を読み込む</li>
+          <li>当日運用は「勤怠管理」で出勤/退勤を打刻する</li>
+          <li>打刻ミス時は「修正申請」を作成し、管理者が承認する</li>
+          <li>月末は「工賃管理」で計算→承認→明細出力する</li>
+        </ol>
+        <p className="small">操作結果は画面上部のメッセージ欄に表示されます。</p>
+      </section>
+
       <section className="card">
-        <h2>ログイン</h2>
+        <h2>1. 認証</h2>
         <p className="small">メール/パスワード -&gt; MFAコード入力でセッションを開始します。</p>
         <form onSubmit={login}>
           <label className="field">
@@ -641,7 +653,7 @@ export default function AdminConsole() {
       </section>
 
       <section className="card">
-        <h2>利用者管理</h2>
+        <h2>2. 利用者管理</h2>
         <form onSubmit={loadServiceUsers}>
           <button disabled={!tokenReady || loading} type="submit">利用者一覧を取得</button>
         </form>
@@ -749,7 +761,7 @@ export default function AdminConsole() {
       </section>
 
       <section className="card">
-        <h2>勤怠管理</h2>
+        <h2>3. 勤怠管理</h2>
         <form onSubmit={clockIn}>
           <h3 style={{ margin: '0 0 8px' }}>打刻実行</h3>
           <label className="field">
@@ -927,7 +939,7 @@ export default function AdminConsole() {
       </section>
 
       <section className="card">
-        <h2>工賃管理</h2>
+        <h2>4. 工賃管理</h2>
         <form onSubmit={calculateMonthlyWages}>
           <h3 style={{ margin: '0 0 8px' }}>月次工賃計算</h3>
           <div className="grid-2">

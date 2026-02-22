@@ -28,6 +28,19 @@ body {
   padding: 16px;
 }
 
+.guide-card {
+  border-color: #8fd3ca;
+  background: linear-gradient(135deg, #f4fffd, #ffffff 60%);
+}
+
+.guide-list {
+  margin: 8px 0 10px;
+  padding-left: 20px;
+  color: var(--text);
+  display: grid;
+  gap: 4px;
+}
+
 .grid {
   display: grid;
   gap: 16px;
