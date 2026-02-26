@@ -8,8 +8,19 @@ import { toSkipTake } from '../common/pagination.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
-import { AttendanceListQueryDto, ClockInDto, ClockOutDto, CreateAttendanceCorrectionDto } from './attendance.dto';
-import { AttendanceCorrectionResponseDto, AttendanceLogResponseDto } from './attendance.response.dto';
+import {
+  AttendanceDayStatusListQueryDto,
+  AttendanceListQueryDto,
+  ClockInDto,
+  ClockOutDto,
+  CreateAttendanceCorrectionDto,
+  UpsertAttendanceDayStatusDto,
+} from './attendance.dto';
+import {
+  AttendanceCorrectionResponseDto,
+  AttendanceDayStatusResponseDto,
+  AttendanceLogResponseDto,
+} from './attendance.response.dto';
 
 @ApiTags('Attendance')
 @ApiBearerAuth()
@@ -139,6 +150,96 @@ export class AttendanceController {
     });
   }
 
+  @Get('attendance-statuses')
+  @Roles('admin', 'manager', 'staff', 'user')
+  @ApiRolesNote('admin', 'manager', 'staff', 'user')
+  @ApiOperation({ summary: '日別勤怠区分を取得' })
+  @ApiOkResponse({ type: AttendanceDayStatusResponseDto, isArray: true })
+  listDayStatuses(@Req() req: any, @Query() query: AttendanceDayStatusListQueryDto) {
+    const org = req.user.organizationId || ORGANIZATION_DEFAULT;
+    const { skip, take } = toSkipTake(query);
+    const from = query.from ? new Date(query.from) : undefined;
+    const to = query.to ? new Date(query.to) : undefined;
+    if (from && to && from > to) {
+      throw new BadRequestException('invalid_date_range');
+    }
+
+    const workDateFilter = {
+      ...(from ? { gte: from } : {}),
+      ...(to ? { lte: to } : {}),
+    };
+
+    if (req.user.role === 'user') {
+      return this.prisma.attendanceDayStatus.findMany({
+        where: {
+          organizationId: org,
+          serviceUserId: req.user.serviceUserId,
+          ...(from || to ? { workDate: workDateFilter } : {}),
+        },
+        orderBy: [{ workDate: 'desc' }, { createdAt: 'desc' }],
+        skip,
+        take,
+      });
+    }
+
+    return this.prisma.attendanceDayStatus.findMany({
+      where: {
+        organizationId: org,
+        ...(query.serviceUserId ? { serviceUserId: query.serviceUserId } : {}),
+        ...(from || to ? { workDate: workDateFilter } : {}),
+      },
+      orderBy: [{ workDate: 'desc' }, { createdAt: 'desc' }],
+      skip,
+      take,
+    });
+  }
+
+  @Post('attendance-statuses/upsert')
+  @Roles('admin', 'manager', 'staff')
+  @ApiRolesNote('admin', 'manager', 'staff')
+  @ApiOperation({ summary: '日別勤怠区分を登録/更新' })
+  @ApiOkResponse({ type: AttendanceDayStatusResponseDto })
+  async upsertDayStatus(@Req() req: any, @Body() body: UpsertAttendanceDayStatusDto) {
+    const org = req.user.organizationId || ORGANIZATION_DEFAULT;
+    await this.assertServiceUserInOrganization(body.serviceUserId, org);
+
+    const workDate = this.normalizeWorkDate(body.workDate);
+    const item = await this.prisma.attendanceDayStatus.upsert({
+      where: {
+        organizationId_serviceUserId_workDate: {
+          organizationId: org,
+          serviceUserId: body.serviceUserId,
+          workDate,
+        },
+      },
+      update: {
+        status: body.status,
+        note: body.note || null,
+        updatedBy: req.user.id,
+      },
+      create: {
+        organizationId: org,
+        serviceUserId: body.serviceUserId,
+        workDate,
+        status: body.status,
+        note: body.note || null,
+        createdBy: req.user.id,
+        updatedBy: req.user.id,
+      },
+    });
+
+    await this.audit.log({
+      actorId: req.user.id,
+      organizationId: org,
+      action: 'UPSERT',
+      entity: 'attendance_day_statuses',
+      entityId: item.id,
+      detail: item,
+    });
+
+    return item;
+  }
+
   @Post('attendance-corrections')
   @Roles('admin', 'manager', 'staff', 'user')
   @ApiRolesNote('admin', 'manager', 'staff', 'user')
@@ -224,5 +325,13 @@ export class AttendanceController {
     if (serviceUser.organizationId !== organizationId) {
       throw new ForbiddenException('organization_forbidden');
     }
+  }
+
+  private normalizeWorkDate(workDate: string) {
+    const parsed = new Date(`${workDate}T00:00:00.000Z`);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException('invalid_work_date');
+    }
+    return parsed;
   }
 }

@@ -32,6 +32,8 @@
 - `POST /attendance/clock-in`
 - `POST /attendance/clock-out`
 - `GET /attendance`
+- `GET /attendance-statuses`
+- `POST /attendance-statuses/upsert`
 
 ## Attendance Corrections
 - `POST /attendance-corrections`

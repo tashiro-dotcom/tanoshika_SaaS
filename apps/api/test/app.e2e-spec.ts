@@ -44,6 +44,7 @@ describe('Major Workflow (e2e)', () => {
     await prisma.auditLog.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.wageCalculation.deleteMany();
+    await prisma.attendanceDayStatus.deleteMany();
     await prisma.attendanceCorrection.deleteMany();
     await prisma.attendanceLog.deleteMany();
     await prisma.shift.deleteMany();
@@ -304,6 +305,35 @@ describe('Major Workflow (e2e)', () => {
       .get('/wages/not-a-uuid/slip')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(400);
+  });
+
+  it('upserts and lists attendance day statuses', async () => {
+    const adminToken = await loginAndGetAccessToken(adminEmail, adminPassword, adminMfaSecret);
+    const workDate = new Date().toISOString().slice(0, 10);
+    const from = `${workDate}T00:00:00.000Z`;
+    const to = `${workDate}T23:59:59.999Z`;
+
+    const upsertRes = await request(app.getHttpServer())
+      .post('/attendance-statuses/upsert')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        serviceUserId,
+        workDate,
+        status: 'paid_leave',
+        note: '通院のため',
+      })
+      .expect(201);
+
+    expect(upsertRes.body.serviceUserId).toBe(serviceUserId);
+    expect(upsertRes.body.status).toBe('paid_leave');
+
+    const listRes = await request(app.getHttpServer())
+      .get(`/attendance-statuses?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(Array.isArray(listRes.body)).toBe(true);
+    expect(listRes.body.some((x: any) => x.serviceUserId === serviceUserId && x.status === 'paid_leave')).toBe(true);
   });
 
   it('keeps list APIs scoped to organization and validates attendance date range', async () => {

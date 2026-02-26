@@ -116,6 +116,23 @@ model AttendanceCorrection {
   @@index([attendanceLogId, status])
 }
 
+model AttendanceDayStatus {
+  id             String   @id @default(uuid())
+  organizationId String
+  serviceUserId  String
+  workDate       DateTime
+  status         String
+  note           String?
+  createdBy      String
+  updatedBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, serviceUserId, workDate])
+  @@index([organizationId, workDate])
+  @@index([serviceUserId, workDate])
+}
+
 model WageRate {
   id             String   @id @default(uuid())
   organizationId String
