@@ -219,6 +219,14 @@ export default function AdminConsole() {
   const [clockLocation, setClockLocation] = useState('');
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
+  const selectedClockUserName = useMemo(
+    () => serviceUsers.find((x) => x.id === clockServiceUserId)?.fullName || '',
+    [serviceUsers, clockServiceUserId],
+  );
+  const selectedStatusUserName = useMemo(
+    () => serviceUsers.find((x) => x.id === statusTargetUserId)?.fullName || '',
+    [serviceUsers, statusTargetUserId],
+  );
 
   async function refreshAttendanceLogs(token: string) {
     const data = await fetchJson<AttendanceLog[]>('/attendance?page=1&limit=20', token.trim());
@@ -482,7 +490,7 @@ export default function AdminConsole() {
     setError('');
     setOpsInfo('');
     try {
-      await postJson<ServiceUser>(
+      const created = await postJson<ServiceUser>(
         '/service-users',
         {
           fullName: newFullName.trim(),
@@ -495,13 +503,16 @@ export default function AdminConsole() {
         accessToken.trim(),
       );
       await refreshServiceUsers(accessToken.trim());
+      setStatusTargetUserId(created.id);
+      setStatusValue(normalizeServiceUserStatus(created.status));
+      setClockServiceUserId(created.id);
       setNewFullName('');
       setNewDisabilityCategory('');
       setNewContractDate('');
       setNewPhone('');
       setNewEmergencyContact('');
       setNewStatus('active');
-      setOpsInfo('利用者を登録しました。');
+      setOpsInfo(`利用者を登録しました。次は「${created.fullName}」を対象にそのままステータス更新/打刻できます。`);
     } catch (err) {
       setError(err instanceof Error ? err.message : '利用者登録に失敗しました');
     } finally {
@@ -689,6 +700,7 @@ export default function AdminConsole() {
 
       <section className="card">
         <h2>2. 利用者管理</h2>
+        <p className="small">登録した利用者は自動で「ステータス更新」「打刻実行」の対象にセットされます。</p>
         <form onSubmit={loadServiceUsers}>
           <button disabled={!tokenReady || loading} type="submit">利用者一覧を取得</button>
         </form>
@@ -803,23 +815,37 @@ export default function AdminConsole() {
                 </td>
                 <td>{user.organizationId}</td>
                 <td>
-                  <button
-                    type="button"
-                    disabled={
-                      !tokenReady ||
-                      loading ||
-                      updatingServiceUserId === user.id ||
-                      (inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status)) === user.status
-                    }
-                    onClick={() =>
-                      void updateServiceUserStatusById(
-                        user.id,
-                        inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status),
-                      )
-                    }
-                  >
-                    {updatingServiceUserId === user.id ? '更新中...' : '更新'}
-                  </button>
+                  <div className="actions compact-actions">
+                    <button
+                      type="button"
+                      disabled={
+                        !tokenReady ||
+                        loading ||
+                        updatingServiceUserId === user.id ||
+                        (inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status)) === user.status
+                      }
+                      onClick={() =>
+                        void updateServiceUserStatusById(
+                          user.id,
+                          inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status),
+                        )
+                      }
+                    >
+                      {updatingServiceUserId === user.id ? '更新中...' : '更新'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!tokenReady || loading}
+                      onClick={() => {
+                        setClockServiceUserId(user.id);
+                        setStatusTargetUserId(user.id);
+                        setStatusValue(inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status));
+                        setOpsInfo(`「${user.fullName}」を打刻・ステータス更新の対象に設定しました。`);
+                      }}
+                    >
+                      この利用者で打刻
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -834,6 +860,7 @@ export default function AdminConsole() {
 
       <section className="card">
         <h2>3. 勤怠管理</h2>
+        <p className="small">現在の打刻対象: {selectedClockUserName || '未選択'}</p>
         <form onSubmit={clockIn}>
           <h3 style={{ margin: '0 0 8px' }}>打刻実行</h3>
           <label className="field">
@@ -854,6 +881,7 @@ export default function AdminConsole() {
               )}
             </select>
           </label>
+          {selectedStatusUserName ? <p className="small">ステータス更新の対象: {selectedStatusUserName}</p> : null}
           <div className="grid-2">
             <label className="field">
               <span>打刻方法</span>
