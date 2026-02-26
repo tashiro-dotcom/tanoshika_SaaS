@@ -78,6 +78,15 @@ type TokenPairResponse = {
 };
 
 const serviceUserStatuses = ['tour', 'trial', 'interview', 'active', 'leaving', 'left'] as const;
+type ServiceUserStatus = (typeof serviceUserStatuses)[number];
+
+function normalizeServiceUserStatus(status: string): ServiceUserStatus {
+  if (serviceUserStatuses.includes(status as ServiceUserStatus)) {
+    return status as ServiceUserStatus;
+  }
+  return 'active';
+}
+
 const apiErrorCodeMessages: Record<string, string> = {
   invalid_credentials: 'メールアドレスまたはパスワードが正しくありません。',
   mfa_not_configured: 'MFAが未設定のアカウントです。管理者へ連絡してください。',
@@ -195,9 +204,11 @@ export default function AdminConsole() {
   const [newContractDate, setNewContractDate] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newEmergencyContact, setNewEmergencyContact] = useState('');
-  const [newStatus, setNewStatus] = useState<(typeof serviceUserStatuses)[number]>('active');
+  const [newStatus, setNewStatus] = useState<ServiceUserStatus>('active');
   const [statusTargetUserId, setStatusTargetUserId] = useState('');
-  const [statusValue, setStatusValue] = useState<(typeof serviceUserStatuses)[number]>('active');
+  const [statusValue, setStatusValue] = useState<ServiceUserStatus>('active');
+  const [inlineStatusDrafts, setInlineStatusDrafts] = useState<Record<string, ServiceUserStatus>>({});
+  const [updatingServiceUserId, setUpdatingServiceUserId] = useState('');
   const [correctionTargetLogId, setCorrectionTargetLogId] = useState('');
   const [correctionReason, setCorrectionReason] = useState('');
   const [correctionClockInAt, setCorrectionClockInAt] = useState('');
@@ -220,6 +231,13 @@ export default function AdminConsole() {
   async function refreshServiceUsers(token: string) {
     const data = await fetchJson<ServiceUser[]>('/service-users?page=1&limit=20', token.trim());
     setServiceUsers(data);
+    setInlineStatusDrafts((prev) => {
+      const next: Record<string, ServiceUserStatus> = {};
+      for (const user of data) {
+        next[user.id] = prev[user.id] || normalizeServiceUserStatus(user.status);
+      }
+      return next;
+    });
     if (data.length > 0 && !statusTargetUserId) {
       setStatusTargetUserId(data[0].id);
     }
@@ -494,13 +512,18 @@ export default function AdminConsole() {
   async function updateServiceUserStatus(e: FormEvent) {
     e.preventDefault();
     if (!tokenReady || !statusTargetUserId) return;
+    await updateServiceUserStatusById(statusTargetUserId, statusValue);
+  }
+
+  async function updateServiceUserStatusById(serviceUserId: string, status: ServiceUserStatus) {
     setLoading(true);
+    setUpdatingServiceUserId(serviceUserId);
     setError('');
     setOpsInfo('');
     try {
       await patchJson<ServiceUser>(
-        `/service-users/${statusTargetUserId}/status`,
-        { status: statusValue },
+        `/service-users/${serviceUserId}/status`,
+        { status },
         accessToken.trim(),
       );
       await refreshServiceUsers(accessToken.trim());
@@ -508,6 +531,7 @@ export default function AdminConsole() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ステータス更新に失敗しました');
     } finally {
+      setUpdatingServiceUserId('');
       setLoading(false);
     }
   }
@@ -733,7 +757,7 @@ export default function AdminConsole() {
             </label>
             <label className="field">
               <span>変更先ステータス</span>
-              <select value={statusValue} onChange={(e) => setStatusValue(e.target.value as (typeof serviceUserStatuses)[number])}>
+              <select value={statusValue} onChange={(e) => setStatusValue(e.target.value as ServiceUserStatus)}>
                 {serviceUserStatuses.map((status) => (
                   <option key={status} value={status}>
                     {status}
@@ -744,6 +768,7 @@ export default function AdminConsole() {
           </div>
           <button disabled={!tokenReady || loading || !statusTargetUserId} type="submit">ステータス更新</button>
         </form>
+        <p className="small" style={{ marginTop: 10 }}>下の一覧からも1クリックでステータス更新できます。</p>
         <table className="table">
           <thead>
             <tr>
@@ -751,6 +776,7 @@ export default function AdminConsole() {
               <th>氏名</th>
               <th>ステータス</th>
               <th>組織</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -758,13 +784,48 @@ export default function AdminConsole() {
               <tr key={user.id}>
                 <td>{user.id.slice(0, 8)}</td>
                 <td>{user.fullName}</td>
-                <td>{user.status}</td>
+                <td>
+                  <select
+                    value={inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status)}
+                    onChange={(e) =>
+                      setInlineStatusDrafts((prev) => ({
+                        ...prev,
+                        [user.id]: e.target.value as ServiceUserStatus,
+                      }))
+                    }
+                  >
+                    {serviceUserStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </td>
                 <td>{user.organizationId}</td>
+                <td>
+                  <button
+                    type="button"
+                    disabled={
+                      !tokenReady ||
+                      loading ||
+                      updatingServiceUserId === user.id ||
+                      (inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status)) === user.status
+                    }
+                    onClick={() =>
+                      void updateServiceUserStatusById(
+                        user.id,
+                        inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status),
+                      )
+                    }
+                  >
+                    {updatingServiceUserId === user.id ? '更新中...' : '更新'}
+                  </button>
+                </td>
               </tr>
             ))}
             {serviceUsers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="small">データ未取得</td>
+                <td colSpan={5} className="small">データ未取得</td>
               </tr>
             ) : null}
           </tbody>
