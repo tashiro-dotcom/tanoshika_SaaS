@@ -79,6 +79,11 @@ type TokenPairResponse = {
 
 const serviceUserStatuses = ['tour', 'trial', 'interview', 'active', 'leaving', 'left'] as const;
 const apiErrorCodeMessages: Record<string, string> = {
+  invalid_credentials: 'メールアドレスまたはパスワードが正しくありません。',
+  mfa_not_configured: 'MFAが未設定のアカウントです。管理者へ連絡してください。',
+  invalid_otp: 'MFAコードが正しくありません。最新コードを再入力してください。',
+  invalid_challenge_type: 'MFAチャレンジが不正です。ログインからやり直してください。',
+  challenge_invalid_or_expired: 'MFAチャレンジの有効期限が切れました。ログインからやり直してください。',
   unauthorized: '認証に失敗しました。ログイン状態を確認してください。',
   forbidden: 'この操作を実行する権限がありません。',
   organization_forbidden: '他組織データへのアクセスは許可されていません。',
@@ -101,10 +106,16 @@ function resolveApiErrorMessage(status: number, text: string): string {
   try {
     const payload = JSON.parse(text) as ApiErrorPayload;
     if (payload.code && apiErrorCodeMessages[payload.code]) return apiErrorCodeMessages[payload.code];
+    if (typeof payload.message === 'string' && apiErrorCodeMessages[payload.message]) {
+      return apiErrorCodeMessages[payload.message];
+    }
     if (typeof payload.message === 'string' && payload.message.trim().length > 0) return payload.message;
     if (Array.isArray(payload.message) && payload.message.length > 0) return payload.message.join(', ');
   } catch {
     // noop
+  }
+  if (status === 401 && text.toLowerCase().includes('jwt')) {
+    return '認証トークンの有効期限が切れています。再ログインしてください。';
   }
   return `API呼び出しに失敗しました（HTTP ${status}）`;
 }

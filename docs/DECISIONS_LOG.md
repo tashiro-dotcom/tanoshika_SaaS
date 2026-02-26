@@ -46,6 +46,7 @@
 - `/admin` の勤怠管理に打刻実行UI（`POST /attendance/clock-in`, `POST /attendance/clock-out`）を追加し、現場運用導線を補完
 - `/admin` に現場向け「最短手順ガイド」を追加し、運用順序（認証→利用者→勤怠→工賃）を画面上で明示
 - 現場テストを即実施できるよう `docs/UAT_SCENARIOS.md` を追加（手順・期待結果・異常系チェックを標準化）
+- MFA検証を安定化するためTOTP検証許容窓を `window=1`（±30秒）へ拡張し、期限切れチャレンジを専用エラーで返す
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
