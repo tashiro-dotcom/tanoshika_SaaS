@@ -49,9 +49,14 @@ export class AuthService {
   }
 
   async verifyMfa(challengeToken: string, otp: string) {
-    const decoded = this.jwt.verify(challengeToken, {
-      secret: process.env.JWT_ACCESS_SECRET || 'dev-access-secret',
-    });
+    let decoded: any;
+    try {
+      decoded = this.jwt.verify(challengeToken, {
+        secret: process.env.JWT_ACCESS_SECRET || 'dev-access-secret',
+      });
+    } catch {
+      throw new UnauthorizedException('challenge_invalid_or_expired');
+    }
 
     if (decoded.type !== 'mfa_challenge') {
       throw new UnauthorizedException('invalid_challenge_type');
@@ -62,7 +67,15 @@ export class AuthService {
       throw new UnauthorizedException('user_not_found');
     }
 
-    const validOtp = authenticator.verify({ token: otp, secret: user.mfaSecret });
+    // Allow +-30 seconds to reduce false negatives caused by minor time drift.
+    const previousOptions = { ...authenticator.options };
+    let validOtp = false;
+    try {
+      authenticator.options = { ...authenticator.options, window: 1 };
+      validOtp = authenticator.verify({ token: otp, secret: user.mfaSecret });
+    } finally {
+      authenticator.options = previousOptions;
+    }
     if (!validOtp) {
       throw new UnauthorizedException('invalid_otp');
     }
