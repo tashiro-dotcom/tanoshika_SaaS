@@ -217,6 +217,8 @@ export default function AdminConsole() {
   const [clockServiceUserId, setClockServiceUserId] = useState('');
   const [clockMethod, setClockMethod] = useState('web');
   const [clockLocation, setClockLocation] = useState('');
+  const [quickClockLoadingByUser, setQuickClockLoadingByUser] = useState<Record<string, boolean>>({});
+  const [quickClockErrorByUser, setQuickClockErrorByUser] = useState<Record<string, string>>({});
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
   const selectedClockUserName = useMemo(
@@ -227,6 +229,31 @@ export default function AdminConsole() {
     () => serviceUsers.find((x) => x.id === statusTargetUserId)?.fullName || '',
     [serviceUsers, statusTargetUserId],
   );
+  const latestAttendanceByServiceUser = useMemo(() => {
+    const map = new Map<string, AttendanceLog>();
+    for (const log of attendanceLogs) {
+      const prev = map.get(log.serviceUserId);
+      if (!prev || new Date(log.clockInAt).getTime() > new Date(prev.clockInAt).getTime()) {
+        map.set(log.serviceUserId, log);
+      }
+    }
+    return map;
+  }, [attendanceLogs]);
+
+  function applyAttendanceLogUpdate(log: AttendanceLog) {
+    setAttendanceLogs((prev) => {
+      const idx = prev.findIndex((x) => x.id === log.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = log;
+        return next;
+      }
+      return [log, ...prev];
+    });
+    if (!correctionTargetLogId) {
+      setCorrectionTargetLogId(log.id);
+    }
+  }
 
   async function refreshAttendanceLogs(token: string) {
     const data = await fetchJson<AttendanceLog[]>('/attendance?page=1&limit=20', token.trim());
@@ -580,46 +607,44 @@ export default function AdminConsole() {
   async function clockIn(e: FormEvent) {
     e.preventDefault();
     if (!tokenReady || !clockServiceUserId) return;
-    setLoading(true);
-    setError('');
-    setOpsInfo('');
-    try {
-      await postJson<AttendanceLog>(
-        '/attendance/clock-in',
-        {
-          serviceUserId: clockServiceUserId,
-          method: clockMethod || 'web',
-          location: clockLocation.trim() || undefined,
-        },
-        accessToken.trim(),
-      );
-      await refreshAttendanceLogs(accessToken.trim());
-      setOpsInfo('出勤打刻を登録しました。');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '出勤打刻に失敗しました');
-    } finally {
-      setLoading(false);
-    }
+    await runClockAction(clockServiceUserId, 'clock-in');
   }
 
   async function clockOut() {
     if (!tokenReady || !clockServiceUserId) return;
+    await runClockAction(clockServiceUserId, 'clock-out');
+  }
+
+  async function runClockAction(serviceUserId: string, action: 'clock-in' | 'clock-out') {
+    if (!tokenReady) return;
+    const userName = serviceUsers.find((x) => x.id === serviceUserId)?.fullName || serviceUserId.slice(0, 8);
     setLoading(true);
+    setQuickClockLoadingByUser((prev) => ({ ...prev, [serviceUserId]: true }));
+    setQuickClockErrorByUser((prev) => ({ ...prev, [serviceUserId]: '' }));
     setError('');
     setOpsInfo('');
     try {
-      await postJson<AttendanceLog>(
-        '/attendance/clock-out',
+      const item = await postJson<AttendanceLog>(
+        `/attendance/${action}`,
         {
-          serviceUserId: clockServiceUserId,
+          serviceUserId,
+          ...(action === 'clock-in'
+            ? {
+                method: clockMethod || 'web',
+                location: clockLocation.trim() || undefined,
+              }
+            : {}),
         },
         accessToken.trim(),
       );
-      await refreshAttendanceLogs(accessToken.trim());
-      setOpsInfo('退勤打刻を登録しました。');
+      applyAttendanceLogUpdate(item);
+      setOpsInfo(`「${userName}」の${action === 'clock-in' ? '出勤' : '退勤'}打刻を登録しました。`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '退勤打刻に失敗しました');
+      const message = err instanceof Error ? err.message : `${action === 'clock-in' ? '出勤' : '退勤'}打刻に失敗しました`;
+      setQuickClockErrorByUser((prev) => ({ ...prev, [serviceUserId]: message }));
+      setError(message);
     } finally {
+      setQuickClockLoadingByUser((prev) => ({ ...prev, [serviceUserId]: false }));
       setLoading(false);
     }
   }
@@ -861,6 +886,74 @@ export default function AdminConsole() {
       <section className="card">
         <h2>3. 勤怠管理</h2>
         <p className="small">現在の打刻対象: {selectedClockUserName || '未選択'}</p>
+        <h3 style={{ margin: '8px 0' }}>ワンクリック打刻（利用者ごと）</h3>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>利用者</th>
+              <th>最新打刻</th>
+              <th>状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {serviceUsers.map((user) => {
+              const latest = latestAttendanceByServiceUser.get(user.id);
+              const isClocking = !!quickClockLoadingByUser[user.id];
+              const quickError = quickClockErrorByUser[user.id] || '';
+              const isWorking = !!latest && !latest.clockOutAt;
+              return (
+                <tr key={`quick-clock-${user.id}`}>
+                  <td>
+                    {user.fullName}
+                    <br />
+                    <span className="small">{user.id.slice(0, 8)}</span>
+                    {quickError ? (
+                      <>
+                        <br />
+                        <span className="error">{quickError}</span>
+                      </>
+                    ) : null}
+                  </td>
+                  <td>
+                    {latest ? new Date(latest.clockInAt).toLocaleString('ja-JP') : '-'}
+                    {latest?.clockOutAt ? ` / ${new Date(latest.clockOutAt).toLocaleString('ja-JP')}` : ''}
+                  </td>
+                  <td>{isWorking ? '勤務中' : '未勤務/退勤済'}</td>
+                  <td>
+                    <div className="actions compact-actions">
+                      <button
+                        type="button"
+                        disabled={!tokenReady || loading || isClocking}
+                        onClick={() => {
+                          setClockServiceUserId(user.id);
+                          void runClockAction(user.id, 'clock-in');
+                        }}
+                      >
+                        {isClocking ? '処理中...' : '出勤'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!tokenReady || loading || isClocking}
+                        onClick={() => {
+                          setClockServiceUserId(user.id);
+                          void runClockAction(user.id, 'clock-out');
+                        }}
+                      >
+                        {isClocking ? '処理中...' : '退勤'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {serviceUsers.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="small">利用者一覧を先に取得してください</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
         <form onSubmit={clockIn}>
           <h3 style={{ margin: '0 0 8px' }}>打刻実行</h3>
           <label className="field">
