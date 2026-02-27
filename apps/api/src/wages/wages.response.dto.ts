@@ -50,6 +50,37 @@ export class WageCalculationItemDto {
   @ApiProperty({ example: 'calculated' })
   status!: string;
 
+  @ApiProperty({
+    required: false,
+    description: '日別勤怠区分の反映内訳（計算時のみ付与）',
+    example: {
+      standardDailyHours: 4,
+      actualWorkedHours: 8,
+      adjustedHours: 10,
+      deltaHours: 2,
+      counts: {
+        present: 0,
+        absent: 1,
+        paid_leave: 1,
+        scheduled_holiday: 0,
+        special_leave: 0,
+      },
+    },
+  })
+  dayStatusSummary?: {
+    standardDailyHours: number;
+    actualWorkedHours: number;
+    adjustedHours: number;
+    deltaHours: number;
+    counts: {
+      present: number;
+      absent: number;
+      paid_leave: number;
+      scheduled_holiday: number;
+      special_leave: number;
+    };
+  };
+
   @ApiProperty({ format: 'date-time' })
   createdAt!: string;
 

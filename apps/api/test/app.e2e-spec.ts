@@ -336,6 +336,36 @@ describe('Major Workflow (e2e)', () => {
     expect(listRes.body.some((x: any) => x.serviceUserId === serviceUserId && x.status === 'paid_leave')).toBe(true);
   });
 
+  it('applies attendance day status rules to wage calculation', async () => {
+    const adminToken = await loginAndGetAccessToken(adminEmail, adminPassword, adminMfaSecret);
+    const targetDate = '2026-03-15';
+
+    await request(app.getHttpServer())
+      .post('/attendance-statuses/upsert')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        serviceUserId,
+        workDate: targetDate,
+        status: 'paid_leave',
+        note: 'ルール反映確認',
+      })
+      .expect(201);
+
+    const calcRes = await request(app.getHttpServer())
+      .post('/wages/calculate-monthly')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ year: 2026, month: 3 })
+      .expect(201);
+
+    const row = calcRes.body.items.find((x: any) => x.serviceUserId === serviceUserId);
+    expect(row).toBeDefined();
+    expect(row.totalHours).toBe(4);
+    expect(row.dayStatusSummary).toBeDefined();
+    expect(row.dayStatusSummary.actualWorkedHours).toBe(0);
+    expect(row.dayStatusSummary.adjustedHours).toBe(4);
+    expect(row.dayStatusSummary.counts.paid_leave).toBeGreaterThanOrEqual(1);
+  });
+
   it('keeps list APIs scoped to organization and validates attendance date range', async () => {
     const adminToken = await loginAndGetAccessToken(adminEmail, adminPassword, adminMfaSecret);
     const otherToken = await loginAndGetAccessToken(otherAdminEmail, otherAdminPassword, otherAdminMfaSecret);
