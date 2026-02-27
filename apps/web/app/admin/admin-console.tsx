@@ -39,6 +39,15 @@ type WageTemplatesResponse = {
   available: Array<{ code: string; label: string }>;
 };
 
+type WageRules = {
+  standardDailyHours: number;
+  presentPolicy: 'actual_only' | 'fixed_zero' | 'fixed_standard';
+  absentPolicy: 'actual_only' | 'fixed_zero' | 'fixed_standard';
+  paidLeavePolicy: 'actual_only' | 'fixed_zero' | 'fixed_standard';
+  scheduledHolidayPolicy: 'actual_only' | 'fixed_zero' | 'fixed_standard';
+  specialLeavePolicy: 'actual_only' | 'fixed_zero' | 'fixed_standard';
+};
+
 type WageCalculationItem = {
   id: string;
   serviceUserId: string;
@@ -197,7 +206,7 @@ async function patchJson<T>(path: string, body: unknown, token?: string): Promis
   return sendJson<T>('PATCH', path, body, token);
 }
 
-async function sendJson<T>(method: 'POST' | 'PATCH', path: string, body: unknown, token?: string): Promise<T> {
+async function sendJson<T>(method: 'POST' | 'PATCH' | 'PUT', path: string, body: unknown, token?: string): Promise<T> {
   const res = await fetch(`${apiBaseUrl()}${path}`, {
     method,
     headers: {
@@ -236,6 +245,14 @@ export default function AdminConsole() {
   const [attendanceCorrections, setAttendanceCorrections] = useState<AttendanceCorrection[]>([]);
   const [attendanceDayStatuses, setAttendanceDayStatuses] = useState<AttendanceDayStatus[]>([]);
   const [wageTemplates, setWageTemplates] = useState<WageTemplatesResponse | null>(null);
+  const [wageRules, setWageRules] = useState<WageRules>({
+    standardDailyHours: 4,
+    presentPolicy: 'actual_only',
+    absentPolicy: 'fixed_zero',
+    paidLeavePolicy: 'fixed_standard',
+    scheduledHolidayPolicy: 'fixed_zero',
+    specialLeavePolicy: 'fixed_standard',
+  });
   const [wageCalculations, setWageCalculations] = useState<WageCalculationItem[]>([]);
   const [wageSlip, setWageSlip] = useState<WageSlip | null>(null);
   const [wageYear, setWageYear] = useState(new Date().getFullYear());
@@ -498,6 +515,38 @@ export default function AdminConsole() {
       setOpsInfo('賃金テンプレートを取得しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '賃金テンプレートの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadWageRules(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await fetchJson<WageRules>('/wages/rules', accessToken.trim());
+      setWageRules(data);
+      setOpsInfo('賃金計算ルールを取得しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '賃金計算ルールの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveWageRules(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await sendJson<WageRules>('PUT', '/wages/rules', wageRules, accessToken.trim());
+      setWageRules(data);
+      setOpsInfo('賃金計算ルールを更新しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '賃金計算ルールの更新に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -1334,6 +1383,94 @@ export default function AdminConsole() {
 
       <section className="card">
         <h2>4. 賃金管理</h2>
+        <form onSubmit={loadWageRules}>
+          <h3 style={{ margin: '0 0 8px' }}>賃金計算ルール</h3>
+          <button disabled={!tokenReady || loading} type="submit">ルールを取得</button>
+        </form>
+        <form onSubmit={saveWageRules} style={{ marginTop: 12 }}>
+          <div className="grid-2">
+            <label className="field">
+              <span>標準日時間</span>
+              <input
+                type="number"
+                min={1}
+                max={12}
+                step={0.5}
+                value={wageRules.standardDailyHours}
+                onChange={(e) => setWageRules((prev) => ({ ...prev, standardDailyHours: Number(e.target.value) }))}
+              />
+            </label>
+            <label className="field">
+              <span>出勤(present)</span>
+              <select
+                value={wageRules.presentPolicy}
+                onChange={(e) => setWageRules((prev) => ({ ...prev, presentPolicy: e.target.value as WageRules['presentPolicy'] }))}
+              >
+                <option value="actual_only">実績時間を使用</option>
+                <option value="fixed_zero">0時間固定</option>
+                <option value="fixed_standard">標準時間固定</option>
+              </select>
+            </label>
+          </div>
+          <div className="grid-2">
+            <label className="field">
+              <span>欠勤(absent)</span>
+              <select
+                value={wageRules.absentPolicy}
+                onChange={(e) => setWageRules((prev) => ({ ...prev, absentPolicy: e.target.value as WageRules['absentPolicy'] }))}
+              >
+                <option value="actual_only">実績時間を使用</option>
+                <option value="fixed_zero">0時間固定</option>
+                <option value="fixed_standard">標準時間固定</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>有給(paid_leave)</span>
+              <select
+                value={wageRules.paidLeavePolicy}
+                onChange={(e) =>
+                  setWageRules((prev) => ({ ...prev, paidLeavePolicy: e.target.value as WageRules['paidLeavePolicy'] }))
+                }
+              >
+                <option value="actual_only">実績時間を使用</option>
+                <option value="fixed_zero">0時間固定</option>
+                <option value="fixed_standard">標準時間固定</option>
+              </select>
+            </label>
+          </div>
+          <div className="grid-2">
+            <label className="field">
+              <span>所定休日(scheduled_holiday)</span>
+              <select
+                value={wageRules.scheduledHolidayPolicy}
+                onChange={(e) =>
+                  setWageRules((prev) => ({
+                    ...prev,
+                    scheduledHolidayPolicy: e.target.value as WageRules['scheduledHolidayPolicy'],
+                  }))
+                }
+              >
+                <option value="actual_only">実績時間を使用</option>
+                <option value="fixed_zero">0時間固定</option>
+                <option value="fixed_standard">標準時間固定</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>特休(special_leave)</span>
+              <select
+                value={wageRules.specialLeavePolicy}
+                onChange={(e) =>
+                  setWageRules((prev) => ({ ...prev, specialLeavePolicy: e.target.value as WageRules['specialLeavePolicy'] }))
+                }
+              >
+                <option value="actual_only">実績時間を使用</option>
+                <option value="fixed_zero">0時間固定</option>
+                <option value="fixed_standard">標準時間固定</option>
+              </select>
+            </label>
+          </div>
+          <button disabled={!tokenReady || loading} type="submit">ルールを保存</button>
+        </form>
         <form onSubmit={calculateMonthlyWages}>
           <h3 style={{ margin: '0 0 8px' }}>月次賃金計算</h3>
           <div className="grid-2">

@@ -40,6 +40,8 @@
 - `POST /attendance-corrections/:id/approve`
 
 ## Wages
+- `GET /wages/rules`
+- `PUT /wages/rules`
 - `POST /wages/calculate-monthly`
 - `POST /wages/:id/approve`
 - `GET /wages/templates`
@@ -57,6 +59,7 @@
   - `special_leave` : 標準日時間（既定4時間）
 - `POST /wages/calculate-monthly` レスポンスに `dayStatusSummary`（実績時間/反映時間/差分/区分件数）を含む
 - `GET /wages/:id/slip(.csv/.pdf)` にも `dayStatusSummary` 相当の内訳（実績時間/反映時間/差分/区分件数）を含める
+- `PUT /wages/rules` で標準日時間と区分ポリシー（actual_only/fixed_zero/fixed_standard）を事業所単位で更新可能
 
 ### Export Endpoints (CSV/PDF)
 - `GET /wages/:id/slip.csv`

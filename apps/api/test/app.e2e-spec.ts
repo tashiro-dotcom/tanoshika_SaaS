@@ -43,6 +43,7 @@ describe('Major Workflow (e2e)', () => {
 
     await prisma.auditLog.deleteMany();
     await prisma.refreshToken.deleteMany();
+    await prisma.wageRuleSetting.deleteMany();
     await prisma.wageCalculation.deleteMany();
     await prisma.attendanceDayStatus.deleteMany();
     await prisma.attendanceCorrection.deleteMany();
@@ -369,6 +370,33 @@ describe('Major Workflow (e2e)', () => {
     expect(row.dayStatusSummary.actualWorkedHours).toBe(0);
     expect(row.dayStatusSummary.adjustedHours).toBe(4);
     expect(row.dayStatusSummary.counts.paid_leave).toBeGreaterThanOrEqual(1);
+  });
+
+  it('updates and retrieves wage rules', async () => {
+    const adminToken = await loginAndGetAccessToken(adminEmail, adminPassword, adminMfaSecret);
+
+    const updateRes = await request(app.getHttpServer())
+      .put('/wages/rules')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        standardDailyHours: 6,
+        presentPolicy: 'actual_only',
+        absentPolicy: 'fixed_zero',
+        paidLeavePolicy: 'fixed_standard',
+        scheduledHolidayPolicy: 'fixed_zero',
+        specialLeavePolicy: 'fixed_standard',
+      })
+      .expect(200);
+
+    expect(updateRes.body.standardDailyHours).toBe(6);
+
+    const getRes = await request(app.getHttpServer())
+      .get('/wages/rules')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(getRes.body.standardDailyHours).toBe(6);
+    expect(getRes.body.paidLeavePolicy).toBe('fixed_standard');
   });
 
   it('keeps list APIs scoped to organization and validates attendance date range', async () => {
