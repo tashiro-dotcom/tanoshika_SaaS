@@ -165,6 +165,20 @@ model WageCalculation {
   @@index([serviceUserId, year, month])
 }
 
+model WageRuleSetting {
+  id                    String   @id @default(uuid())
+  organizationId        String   @unique
+  standardDailyHours    Float    @default(4)
+  presentPolicy         String   @default("actual_only")
+  absentPolicy          String   @default("fixed_zero")
+  paidLeavePolicy       String   @default("fixed_standard")
+  scheduledHolidayPolicy String  @default("fixed_zero")
+  specialLeavePolicy    String   @default("fixed_standard")
+  updatedBy             String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
 model RefreshToken {
   id             String    @id @default(uuid())
   token          String    @unique

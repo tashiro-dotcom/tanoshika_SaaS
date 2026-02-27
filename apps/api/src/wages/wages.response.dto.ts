@@ -16,6 +16,26 @@ export class WageTemplatesResponseDto {
   available!: MunicipalityTemplateOptionDto[];
 }
 
+export class WageRulesResponseDto {
+  @ApiProperty({ example: 4 })
+  standardDailyHours!: number;
+
+  @ApiProperty({ example: 'actual_only' })
+  presentPolicy!: string;
+
+  @ApiProperty({ example: 'fixed_zero' })
+  absentPolicy!: string;
+
+  @ApiProperty({ example: 'fixed_standard' })
+  paidLeavePolicy!: string;
+
+  @ApiProperty({ example: 'fixed_zero' })
+  scheduledHolidayPolicy!: string;
+
+  @ApiProperty({ example: 'fixed_standard' })
+  specialLeavePolicy!: string;
+}
+
 export class WageCalculationItemDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;

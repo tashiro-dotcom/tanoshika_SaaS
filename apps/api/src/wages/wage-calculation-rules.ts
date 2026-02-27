@@ -12,7 +12,7 @@ export type WageCalculationRules = {
   statusPolicies: Record<AttendanceDayStatusRule, DayStatusHoursPolicy>;
 };
 
-const defaultRules: WageCalculationRules = {
+export const defaultWageCalculationRules: WageCalculationRules = {
   standardDailyHours: 4,
   statusPolicies: {
     present: 'actual_only',
@@ -23,17 +23,12 @@ const defaultRules: WageCalculationRules = {
   },
 };
 
-const organizationOverrides: Record<string, Partial<WageCalculationRules>> = {
-  // 将来、事業所別設定をここに追加
-};
-
-export function getWageCalculationRules(organizationId: string): WageCalculationRules {
-  const override = organizationOverrides[organizationId];
-  if (!override) return defaultRules;
+export function applyWageRuleOverride(override?: Partial<WageCalculationRules>): WageCalculationRules {
+  if (!override) return defaultWageCalculationRules;
   return {
-    standardDailyHours: override.standardDailyHours ?? defaultRules.standardDailyHours,
+    standardDailyHours: override.standardDailyHours ?? defaultWageCalculationRules.standardDailyHours,
     statusPolicies: {
-      ...defaultRules.statusPolicies,
+      ...defaultWageCalculationRules.statusPolicies,
       ...(override.statusPolicies || {}),
     },
   };
