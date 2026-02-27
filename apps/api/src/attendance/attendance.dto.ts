@@ -1,4 +1,4 @@
-import { IsDateString, IsIP, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsDateString, IsIP, IsIn, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../common/pagination.dto';
 
@@ -70,4 +70,61 @@ export class CreateAttendanceCorrectionDto {
   @IsOptional()
   @IsDateString()
   requestedClockOutAt?: string;
+}
+
+export const attendanceDayStatuses = [
+  'present',
+  'absent',
+  'paid_leave',
+  'scheduled_holiday',
+  'special_leave',
+] as const;
+
+export class AttendanceDayStatusListQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+    description: '対象利用者ID（管理者系ロール向け）',
+  })
+  @IsOptional()
+  @IsUUID()
+  serviceUserId?: string;
+
+  @ApiPropertyOptional({ example: '2026-02-01', description: '検索開始日（YYYY-MM-DD）' })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiPropertyOptional({ example: '2026-02-29', description: '検索終了日（YYYY-MM-DD）' })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+}
+
+export class UpsertAttendanceDayStatusDto {
+  @ApiProperty({
+    format: 'uuid',
+    example: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1',
+    description: '対象利用者ID',
+  })
+  @IsUUID()
+  serviceUserId!: string;
+
+  @ApiProperty({ example: '2026-02-26', description: '対象日（YYYY-MM-DD）' })
+  @IsDateString()
+  workDate!: string;
+
+  @ApiProperty({
+    example: 'paid_leave',
+    enum: attendanceDayStatuses,
+    description: '日別勤怠区分',
+  })
+  @IsString()
+  @IsIn(attendanceDayStatuses)
+  status!: (typeof attendanceDayStatuses)[number];
+
+  @ApiPropertyOptional({ example: '通院のため有給', description: '補足メモ' })
+  @IsOptional()
+  @IsString()
+  note?: string;
 }

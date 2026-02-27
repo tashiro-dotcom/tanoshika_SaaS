@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 type ServiceUser = {
   id: string;
@@ -24,6 +24,14 @@ type AttendanceCorrection = {
   status: string;
   requestedClockInAt: string | null;
   requestedClockOutAt: string | null;
+};
+
+type AttendanceDayStatus = {
+  id: string;
+  serviceUserId: string;
+  workDate: string;
+  status: string;
+  note: string | null;
 };
 
 type WageTemplatesResponse = {
@@ -79,6 +87,14 @@ type TokenPairResponse = {
 
 const serviceUserStatuses = ['tour', 'trial', 'interview', 'active', 'leaving', 'left'] as const;
 type ServiceUserStatus = (typeof serviceUserStatuses)[number];
+const attendanceDayStatusOptions = [
+  { value: 'present', label: '出勤扱い' },
+  { value: 'absent', label: '欠勤' },
+  { value: 'paid_leave', label: '有給' },
+  { value: 'scheduled_holiday', label: '所定休日' },
+  { value: 'special_leave', label: '特別休暇' },
+] as const;
+type AttendanceDayStatusValue = (typeof attendanceDayStatusOptions)[number]['value'];
 
 function normalizeServiceUserStatus(status: string): ServiceUserStatus {
   if (serviceUserStatuses.includes(status as ServiceUserStatus)) {
@@ -192,6 +208,7 @@ export default function AdminConsole() {
   const [serviceUsers, setServiceUsers] = useState<ServiceUser[]>([]);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
   const [attendanceCorrections, setAttendanceCorrections] = useState<AttendanceCorrection[]>([]);
+  const [attendanceDayStatuses, setAttendanceDayStatuses] = useState<AttendanceDayStatus[]>([]);
   const [wageTemplates, setWageTemplates] = useState<WageTemplatesResponse | null>(null);
   const [wageCalculations, setWageCalculations] = useState<WageCalculationItem[]>([]);
   const [wageSlip, setWageSlip] = useState<WageSlip | null>(null);
@@ -219,6 +236,11 @@ export default function AdminConsole() {
   const [clockLocation, setClockLocation] = useState('');
   const [quickClockLoadingByUser, setQuickClockLoadingByUser] = useState<Record<string, boolean>>({});
   const [quickClockErrorByUser, setQuickClockErrorByUser] = useState<Record<string, string>>({});
+  const [workDate, setWorkDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dayStatusDraftByUser, setDayStatusDraftByUser] = useState<Record<string, AttendanceDayStatusValue>>({});
+  const [dayStatusNoteByUser, setDayStatusNoteByUser] = useState<Record<string, string>>({});
+  const [dayStatusSavingByUser, setDayStatusSavingByUser] = useState<Record<string, boolean>>({});
+  const [dayStatusErrorByUser, setDayStatusErrorByUser] = useState<Record<string, string>>({});
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
   const selectedClockUserName = useMemo(
@@ -239,6 +261,24 @@ export default function AdminConsole() {
     }
     return map;
   }, [attendanceLogs]);
+  const dayStatusByServiceUser = useMemo(() => {
+    const map = new Map<string, AttendanceDayStatus>();
+    for (const item of attendanceDayStatuses) {
+      map.set(item.serviceUserId, item);
+    }
+    return map;
+  }, [attendanceDayStatuses]);
+
+  useEffect(() => {
+    if (!tokenReady) return;
+    void refreshAttendanceDayStatuses(accessToken.trim(), workDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenReady, accessToken, workDate]);
+
+  function labelForDayStatus(status: string) {
+    const found = attendanceDayStatusOptions.find((x) => x.value === status);
+    return found?.label || status;
+  }
 
   function applyAttendanceLogUpdate(log: AttendanceLog) {
     setAttendanceLogs((prev) => {
@@ -261,6 +301,30 @@ export default function AdminConsole() {
     if (data.length > 0 && !correctionTargetLogId) {
       setCorrectionTargetLogId(data[0].id);
     }
+  }
+
+  async function refreshAttendanceDayStatuses(token: string, targetWorkDate = workDate) {
+    const from = `${targetWorkDate}T00:00:00.000Z`;
+    const to = `${targetWorkDate}T23:59:59.999Z`;
+    const data = await fetchJson<AttendanceDayStatus[]>(
+      `/attendance-statuses?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&page=1&limit=200`,
+      token.trim(),
+    );
+    setAttendanceDayStatuses(data);
+    setDayStatusDraftByUser((prev) => {
+      const next = { ...prev };
+      for (const item of data) {
+        next[item.serviceUserId] = (item.status as AttendanceDayStatusValue) || 'present';
+      }
+      return next;
+    });
+    setDayStatusNoteByUser((prev) => {
+      const next = { ...prev };
+      for (const item of data) {
+        next[item.serviceUserId] = item.note || '';
+      }
+      return next;
+    });
   }
 
   async function refreshServiceUsers(token: string) {
@@ -388,6 +452,7 @@ export default function AdminConsole() {
     setError('');
     try {
       await refreshAttendanceLogs(accessToken.trim());
+      await refreshAttendanceDayStatuses(accessToken.trim());
       setOpsInfo('勤怠一覧を更新しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '勤怠一覧の取得に失敗しました');
@@ -649,6 +714,41 @@ export default function AdminConsole() {
     }
   }
 
+  async function upsertDayStatus(serviceUserId: string) {
+    if (!tokenReady) return;
+    const status = dayStatusDraftByUser[serviceUserId] || 'present';
+    const note = dayStatusNoteByUser[serviceUserId] || '';
+    setLoading(true);
+    setDayStatusSavingByUser((prev) => ({ ...prev, [serviceUserId]: true }));
+    setDayStatusErrorByUser((prev) => ({ ...prev, [serviceUserId]: '' }));
+    setError('');
+    setOpsInfo('');
+    try {
+      const item = await postJson<AttendanceDayStatus>(
+        '/attendance-statuses/upsert',
+        {
+          serviceUserId,
+          workDate,
+          status,
+          note: note.trim() || undefined,
+        },
+        accessToken.trim(),
+      );
+      setAttendanceDayStatuses((prev) => {
+        const filtered = prev.filter((x) => x.serviceUserId !== serviceUserId);
+        return [item, ...filtered];
+      });
+      setOpsInfo('日別勤怠区分を更新しました。');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '日別勤怠区分の更新に失敗しました';
+      setDayStatusErrorByUser((prev) => ({ ...prev, [serviceUserId]: message }));
+      setError(message);
+    } finally {
+      setDayStatusSavingByUser((prev) => ({ ...prev, [serviceUserId]: false }));
+      setLoading(false);
+    }
+  }
+
   async function approveAttendanceCorrection(e: FormEvent) {
     e.preventDefault();
     if (!tokenReady || !approveCorrectionId.trim()) return;
@@ -886,6 +986,22 @@ export default function AdminConsole() {
       <section className="card">
         <h2>3. 勤怠管理</h2>
         <p className="small">現在の打刻対象: {selectedClockUserName || '未選択'}</p>
+        <div className="grid-2">
+          <label className="field">
+            <span>勤務日</span>
+            <input type="date" value={workDate} onChange={(e) => setWorkDate(e.target.value)} />
+          </label>
+          <div className="field">
+            <span>日別区分の再取得</span>
+            <button
+              type="button"
+              disabled={!tokenReady || loading}
+              onClick={() => void refreshAttendanceDayStatuses(accessToken.trim())}
+            >
+              区分を再取得
+            </button>
+          </div>
+        </div>
         <h3 style={{ margin: '8px 0' }}>ワンクリック打刻（利用者ごと）</h3>
         <table className="table">
           <thead>
@@ -893,6 +1009,7 @@ export default function AdminConsole() {
               <th>利用者</th>
               <th>最新打刻</th>
               <th>状態</th>
+              <th>日別区分</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -901,7 +1018,24 @@ export default function AdminConsole() {
               const latest = latestAttendanceByServiceUser.get(user.id);
               const isClocking = !!quickClockLoadingByUser[user.id];
               const quickError = quickClockErrorByUser[user.id] || '';
+              const dayStatus = dayStatusByServiceUser.get(user.id);
               const isWorking = !!latest && !latest.clockOutAt;
+              const dayStatusDraft = dayStatusDraftByUser[user.id] || (dayStatus?.status as AttendanceDayStatusValue) || 'present';
+              const isLeaveLike = ['absent', 'paid_leave', 'scheduled_holiday', 'special_leave'].includes(dayStatusDraft);
+              const statusText = isWorking
+                ? '勤務中'
+                : latest?.clockOutAt
+                  ? '退勤済'
+                  : dayStatus
+                    ? labelForDayStatus(dayStatus.status)
+                    : '未打刻';
+              const statusClassName = isWorking
+                ? 'status-badge status-working'
+                : latest?.clockOutAt
+                  ? 'status-badge status-done'
+                  : dayStatus
+                    ? 'status-badge status-leave'
+                    : 'status-badge status-missing';
               return (
                 <tr key={`quick-clock-${user.id}`}>
                   <td>
@@ -919,12 +1053,53 @@ export default function AdminConsole() {
                     {latest ? new Date(latest.clockInAt).toLocaleString('ja-JP') : '-'}
                     {latest?.clockOutAt ? ` / ${new Date(latest.clockOutAt).toLocaleString('ja-JP')}` : ''}
                   </td>
-                  <td>{isWorking ? '勤務中' : '未勤務/退勤済'}</td>
+                  <td><span className={statusClassName}>{statusText}</span></td>
+                  <td>
+                    <div className="field" style={{ marginBottom: 0 }}>
+                      <select
+                        value={dayStatusDraft}
+                        onChange={(e) =>
+                          setDayStatusDraftByUser((prev) => ({
+                            ...prev,
+                            [user.id]: e.target.value as AttendanceDayStatusValue,
+                          }))
+                        }
+                        disabled={!tokenReady || loading}
+                      >
+                        {attendanceDayStatusOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={dayStatusNoteByUser[user.id] || ''}
+                        onChange={(e) =>
+                          setDayStatusNoteByUser((prev) => ({
+                            ...prev,
+                            [user.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="区分メモ（任意）"
+                        disabled={!tokenReady || loading}
+                      />
+                      <button
+                        type="button"
+                        disabled={!tokenReady || loading || !!dayStatusSavingByUser[user.id]}
+                        onClick={() => void upsertDayStatus(user.id)}
+                      >
+                        {dayStatusSavingByUser[user.id] ? '保存中...' : '区分を保存'}
+                      </button>
+                      {dayStatusErrorByUser[user.id] ? (
+                        <span className="error">{dayStatusErrorByUser[user.id]}</span>
+                      ) : null}
+                    </div>
+                  </td>
                   <td>
                     <div className="actions compact-actions">
                       <button
                         type="button"
-                        disabled={!tokenReady || loading || isClocking}
+                        disabled={!tokenReady || loading || isClocking || isWorking || isLeaveLike}
                         onClick={() => {
                           setClockServiceUserId(user.id);
                           void runClockAction(user.id, 'clock-in');
@@ -934,7 +1109,7 @@ export default function AdminConsole() {
                       </button>
                       <button
                         type="button"
-                        disabled={!tokenReady || loading || isClocking}
+                        disabled={!tokenReady || loading || isClocking || !isWorking || isLeaveLike}
                         onClick={() => {
                           setClockServiceUserId(user.id);
                           void runClockAction(user.id, 'clock-out');
@@ -949,7 +1124,7 @@ export default function AdminConsole() {
             })}
             {serviceUsers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="small">利用者一覧を先に取得してください</td>
+                <td colSpan={5} className="small">利用者一覧を先に取得してください</td>
               </tr>
             ) : null}
           </tbody>
