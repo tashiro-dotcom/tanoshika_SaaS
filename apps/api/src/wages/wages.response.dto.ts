@@ -88,6 +88,37 @@ export class WageCalculationItemDto {
   updatedAt!: string;
 }
 
+class DayStatusSummaryDto {
+  @ApiProperty({ example: 4 })
+  standardDailyHours!: number;
+
+  @ApiProperty({ example: 8 })
+  actualWorkedHours!: number;
+
+  @ApiProperty({ example: 10 })
+  adjustedHours!: number;
+
+  @ApiProperty({ example: 2 })
+  deltaHours!: number;
+
+  @ApiProperty({
+    example: {
+      present: 0,
+      absent: 1,
+      paid_leave: 1,
+      scheduled_holiday: 0,
+      special_leave: 0,
+    },
+  })
+  counts!: {
+    present: number;
+    absent: number;
+    paid_leave: number;
+    scheduled_holiday: number;
+    special_leave: number;
+  };
+}
+
 export class WageCalculateResponseDto {
   @ApiProperty({ example: 1 })
   count!: number;
@@ -147,4 +178,7 @@ export class WageSlipResponseDto {
 
   @ApiProperty({ format: 'date-time' })
   issuedAt!: string;
+
+  @ApiProperty({ type: DayStatusSummaryDto })
+  dayStatusSummary!: DayStatusSummaryDto;
 }

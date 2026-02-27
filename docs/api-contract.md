@@ -56,6 +56,7 @@
   - `paid_leave` : 標準日時間（既定4時間）
   - `special_leave` : 標準日時間（既定4時間）
 - `POST /wages/calculate-monthly` レスポンスに `dayStatusSummary`（実績時間/反映時間/差分/区分件数）を含む
+- `GET /wages/:id/slip(.csv/.pdf)` にも `dayStatusSummary` 相当の内訳（実績時間/反映時間/差分/区分件数）を含める
 
 ### Export Endpoints (CSV/PDF)
 - `GET /wages/:id/slip.csv`

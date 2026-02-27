@@ -16,6 +16,19 @@ export type WageSlipView = {
   remarks: string;
   approverId: string;
   issuedAt: string;
+  dayStatusSummary: {
+    standardDailyHours: number;
+    actualWorkedHours: number;
+    adjustedHours: number;
+    deltaHours: number;
+    counts: {
+      present: number;
+      absent: number;
+      paid_leave: number;
+      scheduled_holiday: number;
+      special_leave: number;
+    };
+  };
 };
 
 export type MunicipalityTemplate = {
@@ -39,6 +52,13 @@ const BASE_CSV_HEADERS = [
   '総支給額',
   '控除額',
   '差引支給額',
+  '実績時間',
+  '反映時間',
+  '時間差分',
+  '有給件数',
+  '欠勤件数',
+  '所定休日件数',
+  '特休件数',
   'ステータス',
   '備考',
   '承認者ID',
@@ -63,6 +83,13 @@ function createTemplate(code: string, label: string, prefectureName: string): Mu
       view.grossAmount.toString(),
       view.deductions.toString(),
       view.netAmount.toString(),
+      view.dayStatusSummary.actualWorkedHours.toString(),
+      view.dayStatusSummary.adjustedHours.toString(),
+      view.dayStatusSummary.deltaHours.toString(),
+      view.dayStatusSummary.counts.paid_leave.toString(),
+      view.dayStatusSummary.counts.absent.toString(),
+      view.dayStatusSummary.counts.scheduled_holiday.toString(),
+      view.dayStatusSummary.counts.special_leave.toString(),
       view.statusLabel,
       view.remarks,
       view.approverId,
@@ -85,6 +112,13 @@ function createTemplate(code: string, label: string, prefectureName: string): Mu
       `Gross Amount   : ${formatYen(view.grossAmount)}`,
       `Deductions     : ${formatYen(view.deductions)}`,
       `Net Amount     : ${formatYen(view.netAmount)}`,
+      `Actual Hours   : ${formatHours(view.dayStatusSummary.actualWorkedHours)} h`,
+      `Adjusted Hours : ${formatHours(view.dayStatusSummary.adjustedHours)} h`,
+      `Delta Hours    : ${formatHours(view.dayStatusSummary.deltaHours)} h`,
+      `Paid Leave Cnt : ${view.dayStatusSummary.counts.paid_leave}`,
+      `Absent Cnt     : ${view.dayStatusSummary.counts.absent}`,
+      `Holiday Cnt    : ${view.dayStatusSummary.counts.scheduled_holiday}`,
+      `Special Lv Cnt : ${view.dayStatusSummary.counts.special_leave}`,
       '------------------------------------------',
       `Status         : ${view.statusLabel}`,
       `Remarks        : ${view.remarks}`,
