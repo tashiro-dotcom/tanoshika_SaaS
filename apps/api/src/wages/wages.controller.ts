@@ -64,6 +64,11 @@ export class WagesController {
   @ApiOkResponse({ type: WageRulesResponseDto })
   async updateRules(@Req() req: any, @Body() body: UpdateWageRulesDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
+    const changeReason = body.changeReason.trim();
+    if (!changeReason) {
+      throw new BadRequestException('change_reason_required');
+    }
+    const before = await this.getWageRules(org);
     const updated = await this.prisma.wageRuleSetting.upsert({
       where: { organizationId: org },
       update: {
@@ -93,7 +98,20 @@ export class WagesController {
       action: 'UPDATE_RULES',
       entity: 'wage_rule_settings',
       entityId: updated.id,
-      detail: updated,
+      detail: {
+        changeReason,
+        before,
+        after: {
+          standardDailyHours: updated.standardDailyHours,
+          statusPolicies: {
+            present: updated.presentPolicy,
+            absent: updated.absentPolicy,
+            paid_leave: updated.paidLeavePolicy,
+            scheduled_holiday: updated.scheduledHolidayPolicy,
+            special_leave: updated.specialLeavePolicy,
+          },
+        },
+      },
     });
 
     return {

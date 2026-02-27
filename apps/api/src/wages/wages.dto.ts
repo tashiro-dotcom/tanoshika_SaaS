@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsNumber, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsString, Max, Min, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { DayStatusHoursPolicy } from './wage-calculation-rules';
 
@@ -46,4 +46,9 @@ export class UpdateWageRulesDto {
   @ApiProperty({ example: 'fixed_standard', enum: ['actual_only', 'fixed_zero', 'fixed_standard'] })
   @IsIn(['actual_only', 'fixed_zero', 'fixed_standard'])
   specialLeavePolicy!: DayStatusHoursPolicy;
+
+  @ApiProperty({ example: '2026年4月より有給の換算時間を見直し', description: 'ルール変更理由（監査ログ用）' })
+  @IsString()
+  @MinLength(1)
+  changeReason!: string;
 }

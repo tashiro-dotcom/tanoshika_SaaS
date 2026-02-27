@@ -60,6 +60,7 @@
 - `POST /wages/calculate-monthly` レスポンスに `dayStatusSummary`（実績時間/反映時間/差分/区分件数）を含む
 - `GET /wages/:id/slip(.csv/.pdf)` にも `dayStatusSummary` 相当の内訳（実績時間/反映時間/差分/区分件数）を含める
 - `PUT /wages/rules` で標準日時間と区分ポリシー（actual_only/fixed_zero/fixed_standard）を事業所単位で更新可能
+- `PUT /wages/rules` は `changeReason`（変更理由）必須。監査ログへ `before/after/changeReason` を記録
 
 ### Export Endpoints (CSV/PDF)
 - `GET /wages/:id/slip.csv`
