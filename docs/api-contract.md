@@ -47,7 +47,7 @@
 - `GET /wages/:id/slip.csv`
 - `GET /wages/:id/slip.pdf`
 
-### 月次工賃計算ルール（MVP）
+### 月次賃金計算ルール（MVP）
 - 実績打刻（`attendance_logs`）を基準に時間集計
 - 日別区分（`attendance_day_statuses`）がある日は以下で上書き
   - `present` : 実績時間をそのまま使用

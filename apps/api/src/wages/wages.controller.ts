@@ -41,7 +41,7 @@ export class WagesController {
   @Get('templates')
   @Roles('admin', 'manager', 'staff')
   @ApiRolesNote('admin', 'manager', 'staff')
-  @ApiOperation({ summary: '工賃明細の自治体テンプレート一覧を取得' })
+  @ApiOperation({ summary: '賃金明細の自治体テンプレート一覧を取得' })
   @ApiOkResponse({
     type: WageTemplatesResponseDto,
     example: {
@@ -64,7 +64,7 @@ export class WagesController {
   @Post('calculate-monthly')
   @Roles('admin', 'manager')
   @ApiRolesNote('admin', 'manager')
-  @ApiOperation({ summary: '月次工賃を計算' })
+  @ApiOperation({ summary: '月次賃金を計算' })
   @ApiOkResponse({
     type: WageCalculateResponseDto,
     example: {
@@ -224,7 +224,7 @@ export class WagesController {
   @Post(':id/approve')
   @Roles('admin', 'manager')
   @ApiRolesNote('admin', 'manager')
-  @ApiOperation({ summary: '工賃計算を承認確定' })
+  @ApiOperation({ summary: '賃金計算を承認確定' })
   @ApiOkResponse({
     type: WageCalculationItemDto,
     example: {
@@ -273,7 +273,7 @@ export class WagesController {
   @Get(':id/slip')
   @Roles('admin', 'manager', 'staff', 'user')
   @ApiRolesNote('admin', 'manager', 'staff', 'user')
-  @ApiOperation({ summary: '工賃明細(JSON)を取得' })
+  @ApiOperation({ summary: '賃金明細(JSON)を取得' })
   @ApiOkResponse({
     type: WageSlipResponseDto,
     example: {
@@ -308,7 +308,7 @@ export class WagesController {
   @Get(':id/slip.csv')
   @Roles('admin', 'manager', 'staff', 'user')
   @ApiRolesNote('admin', 'manager', 'staff', 'user')
-  @ApiOperation({ summary: '工賃明細(CSV)を出力' })
+  @ApiOperation({ summary: '賃金明細(CSV)を出力' })
   @ApiProduces('text/csv')
   @ApiOkResponse({
     description: 'CSVファイル（UTF-8 BOM付き）を添付形式で返却',
@@ -348,7 +348,7 @@ export class WagesController {
   @Get(':id/slip.pdf')
   @Roles('admin', 'manager', 'staff', 'user')
   @ApiRolesNote('admin', 'manager', 'staff', 'user')
-  @ApiOperation({ summary: '工賃明細(PDF)を出力' })
+  @ApiOperation({ summary: '賃金明細(PDF)を出力' })
   @ApiProduces('application/pdf')
   @ApiOkResponse({
     description: 'PDFファイルを添付形式で返却',

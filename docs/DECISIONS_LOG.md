@@ -4,7 +4,7 @@
 
 ## 2026-02-13
 - MVPを単一事業所モデルで開始（`organization_id` は将来拡張用に保持）
-- 工賃計算は時間ベースのみ
+- 賃金計算は時間ベースのみ
 - 認証はメール/パスワード + TOTP MFA
 - refresh tokenはDB保存し、refresh時に旧トークン失効
 - 主要操作の監査ログをDB保存
@@ -12,20 +12,20 @@
 - API入力は `class-validator + DTO + ValidationPipe` でバリデーションを必須化
 - 認可を強化し、更新/承認/明細APIで `organization_id` 境界を403で拒否
 - E2Eに「他組織アクセス拒否」「staffの権限拒否」を追加
-- 工賃明細のCSV/PDFダウンロードAPI（`/wages/:id/slip.csv`, `/wages/:id/slip.pdf`）を追加
+- 賃金明細のCSV/PDFダウンロードAPI（`/wages/:id/slip.csv`, `/wages/:id/slip.pdf`）を追加
 - 作成系APIでも `serviceUserId` の組織所属を必須検証し、越境指定を403で拒否
 - `:id` パラメータを共通DTOで UUID バリデーション必須化（DB到達前に400）
 - 一覧系APIに `page/limit` バリデーション + `skip/take` を導入（大量件数の安全化）
 - 勤怠一覧に `from/to` 日付範囲バリデーションを導入
-- 工賃明細CSVを日本語ヘッダー+BOM付きに改善（Excel互換性を優先）
-- 工賃明細PDFの出力レイアウトを明細形式へ改善（内訳・発行日時を追加）
+- 賃金明細CSVを日本語ヘッダー+BOM付きに改善（Excel互換性を優先）
+- 賃金明細PDFの出力レイアウトを明細形式へ改善（内訳・発行日時を追加）
 - E2Eに一覧APIの組織分離検証（他組織データ非表示）と勤怠期間クエリ検証を追加
-- 工賃明細(JSON/CSV/PDF)に「利用者名」「事業所名」を追加表示
-- 工賃明細(JSON/CSV/PDF)に「締日」「備考」「承認者ID」「印影欄（PDF）」を追加
+- 賃金明細(JSON/CSV/PDF)に「利用者名」「事業所名」を追加表示
+- 賃金明細(JSON/CSV/PDF)に「締日」「備考」「承認者ID」「印影欄（PDF）」を追加
 - 自治体出力はテンプレート層で管理し、既定値を `fukuoka` に設定（将来の他自治体拡張前提）
 - CIでPostgreSQLサービス付きE2E（Prisma generate/push/seed/test:e2e）を自動実行
 - OpenAPI自動生成を導入（`/api-docs`, `/api-docs-json`）
-- 工賃明細テンプレートをレジストリ化し、福岡を既定のまま他自治体追加余地を実装（`GET /wages/templates` で利用可能テンプレート確認）
+- 賃金明細テンプレートをレジストリ化し、福岡を既定のまま他自治体追加余地を実装（`GET /wages/templates` で利用可能テンプレート確認）
 - Global Exception Filter を導入し、HTTP/Prisma例外を統一レスポンス形式で返却（`statusCode/message/error/code/timestamp/path`）
 - OpenAPI運用を強化し、主要Controllerへ `@ApiTags`/`@ApiBearerAuth`/`@ApiOperation` を付与（Swaggerの可読性向上）
 - OpenAPIに共通エラーレスポンススキーマを導入し、主要Controllerに一括適用（エラー契約の見える化）
@@ -37,21 +37,22 @@
 - OpenAPI DTOへ現場向けdescriptionを追加し、入力項目の意味をSwagger上で明確化
 - CSV/PDF出力APIをOpenAPI上で `format: binary` として明示し、SDK/連携時の機械判定を安定化
 - OpenAPI各Operationに `x-roles` を付与し、認可ロール要件を仕様上で参照可能に統一
-- 管理画面の土台として `/admin` を追加し、MVP主要API（利用者一覧/勤怠一覧/工賃テンプレート）への接続確認UIを実装
+- 管理画面の土台として `/admin` を追加し、MVP主要API（利用者一覧/勤怠一覧/賃金テンプレート）への接続確認UIを実装
 - `/admin` にログイン導線（`/auth/login` -> `/auth/mfa/verify`）とトークン更新/ログアウト（`/auth/refresh` `/auth/logout`）を実装し、トークン手入力を不要化
 - `/admin` に利用者の新規登録フォーム（`POST /service-users`）とステータス更新フォーム（`PATCH /service-users/:id/status`）を実装
 - `/admin` の勤怠管理に修正申請フォーム（`POST /attendance-corrections`）と承認フォーム（`POST /attendance-corrections/:id/approve`）を追加
-- `/admin` の工賃管理に月次計算（`POST /wages/calculate-monthly`）・承認（`POST /wages/:id/approve`）・明細取得（`GET /wages/:id/slip(.json/.csv/.pdf)`）UIを追加
+- `/admin` の賃金管理に月次計算（`POST /wages/calculate-monthly`）・承認（`POST /wages/:id/approve`）・明細取得（`GET /wages/:id/slip(.json/.csv/.pdf)`）UIを追加
 - `/admin` のAPIエラー表示をコードベースで標準化し、連続操作時に状態が崩れやすい勤怠再取得処理を共通化
 - `/admin` の勤怠管理に打刻実行UI（`POST /attendance/clock-in`, `POST /attendance/clock-out`）を追加し、現場運用導線を補完
-- `/admin` に現場向け「最短手順ガイド」を追加し、運用順序（認証→利用者→勤怠→工賃）を画面上で明示
+- `/admin` に現場向け「最短手順ガイド」を追加し、運用順序（認証→利用者→勤怠→賃金）を画面上で明示
 - 現場テストを即実施できるよう `docs/UAT_SCENARIOS.md` を追加（手順・期待結果・異常系チェックを標準化）
 - MFA検証を安定化するためTOTP検証許容窓を `window=1`（±30秒）へ拡張し、期限切れチャレンジを専用エラーで返す
 - `/admin` の利用者一覧に行内ステータス更新を追加し、対象選択フォームを経由しない最短導線で `PATCH /service-users/:id/status` を実行可能にした（操作ステップ短縮）
 - `/admin` で利用者登録後に対象利用者をステータス更新/打刻へ自動セットし、一覧行に「この利用者で打刻」操作を追加（登録→更新→打刻の連続導線を短縮）
 - `/admin` 勤怠管理に利用者行ごとのワンクリック出勤/退勤を追加し、打刻後は全件再取得せず対象ログのみ更新する方式へ変更（体感速度と操作性を改善）
 - 勤怠運用を「実績打刻」と「日別区分（欠勤/有給/所定休日/特休）」に分離し、`attendance-statuses` で日別区分を明示登録する方針を採用（未打刻の自動補完は行わない）
-- 工賃計算は日別区分ルール設定を通して反映する方針に変更（`欠勤/所定休日=0h`, `有給/特休=標準時間`, `出勤=実績`）。反映内訳を計算レスポンスに含める
+- 賃金計算は日別区分ルール設定を通して反映する方針に変更（`欠勤/所定休日=0h`, `有給/特休=標準時間`, `出勤=実績`）。反映内訳を計算レスポンスに含める
+- A型事業所の運用用語に合わせ、画面/API説明/ドキュメントの主要表記を「工賃」から「賃金」へ統一
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
