@@ -194,6 +194,8 @@ describe('Major Workflow (e2e)', () => {
     expect(slipRes.body.closingDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(slipRes.body.remarks).toBe('管理者承認済み');
     expect(slipRes.body.status).toBe('approved');
+    expect(slipRes.body.dayStatusSummary).toBeDefined();
+    expect(typeof slipRes.body.dayStatusSummary.adjustedHours).toBe('number');
 
     const csvRes = await request(app.getHttpServer())
       .get(`/wages/${wageId}/slip.csv`)
@@ -205,6 +207,8 @@ describe('Major Workflow (e2e)', () => {
     expect(csvRes.text).toContain('利用者名');
     expect(csvRes.text).toContain('締日');
     expect(csvRes.text).toContain('備考');
+    expect(csvRes.text).toContain('実績時間');
+    expect(csvRes.text).toContain('反映時間');
     expect(csvRes.text).toContain('E2E利用者');
     expect(csvRes.text).toContain('A型事業所 本店');
     expect(csvRes.text).toContain(wageId);
@@ -229,6 +233,7 @@ describe('Major Workflow (e2e)', () => {
     expect(pdfText).toContain('A型事業所 本店');
     expect(pdfText).toContain('E2E利用者');
     expect(pdfText).toContain('Closing Date');
+    expect(pdfText).toContain('Adjusted Hours');
     expect(pdfText).toContain('Approval Stamp');
   });
 

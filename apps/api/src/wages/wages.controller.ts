@@ -294,6 +294,19 @@ export class WagesController {
       remarks: '管理者承認済み',
       approverId: 'admin-user-id',
       issuedAt: '2026-02-20T05:03:00.000Z',
+      dayStatusSummary: {
+        standardDailyHours: 4,
+        actualWorkedHours: 120.5,
+        adjustedHours: 124.5,
+        deltaHours: 4,
+        counts: {
+          present: 20,
+          absent: 1,
+          paid_leave: 1,
+          scheduled_holiday: 0,
+          special_leave: 0,
+        },
+      },
     },
   })
   async slip(@Req() req: any, @Param() params: IdParamDto) {
@@ -399,7 +412,76 @@ export class WagesController {
   private async getSlipViewOrThrow(req: any, id: string) {
     const item = await this.getSlipOrThrow(req, id);
     const serviceUser = await this.prisma.serviceUser.findUnique({ where: { id: item.serviceUserId } });
-    return buildSlipView(item, serviceUser?.fullName || '不明');
+    const dayStatusSummary = await this.calculateDayStatusSummary(item.organizationId, item.serviceUserId, item.year, item.month);
+    return buildSlipView(item, serviceUser?.fullName || '不明', dayStatusSummary);
+  }
+
+  private async calculateDayStatusSummary(organizationId: string, serviceUserId: string, year: number, month: number) {
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 1));
+    const rules = getWageCalculationRules(organizationId);
+    const logs = await this.prisma.attendanceLog.findMany({
+      where: {
+        organizationId,
+        serviceUserId,
+        clockInAt: { gte: start, lt: end },
+      },
+      orderBy: { clockInAt: 'asc' },
+    });
+    const dayStatuses = await this.prisma.attendanceDayStatus.findMany({
+      where: {
+        organizationId,
+        serviceUserId,
+        workDate: { gte: start, lt: end },
+      },
+      orderBy: { workDate: 'asc' },
+    });
+
+    const workedByDate: Record<string, number> = {};
+    for (const log of logs) {
+      const key = toDateKey(log.clockInAt);
+      workedByDate[key] = (workedByDate[key] || 0) + hoursBetween(log.clockInAt, log.clockOutAt);
+    }
+
+    const counts = {
+      present: 0,
+      absent: 0,
+      paid_leave: 0,
+      scheduled_holiday: 0,
+      special_leave: 0,
+    };
+
+    for (const ds of dayStatuses) {
+      const key = toDateKey(ds.workDate);
+      const status = ds.status as AttendanceDayStatusRule;
+      if (status in counts) {
+        counts[status as keyof typeof counts] += 1;
+      }
+      const policy = rules.statusPolicies[status];
+      const current = workedByDate[key] || 0;
+      if (policy === 'fixed_zero') {
+        workedByDate[key] = 0;
+      } else if (policy === 'fixed_standard') {
+        workedByDate[key] = rules.standardDailyHours;
+      } else {
+        workedByDate[key] = current;
+      }
+    }
+
+    const actualWorkedHours = Number(logs.reduce((acc, log) => acc + hoursBetween(log.clockInAt, log.clockOutAt), 0).toFixed(2));
+    const adjustedHours = Number(
+      Object.values(workedByDate)
+        .reduce((acc, h) => acc + h, 0)
+        .toFixed(2),
+    );
+
+    return {
+      standardDailyHours: rules.standardDailyHours,
+      actualWorkedHours,
+      adjustedHours,
+      deltaHours: Number((adjustedHours - actualWorkedHours).toFixed(2)),
+      counts,
+    };
   }
 }
 
@@ -416,7 +498,7 @@ function buildSlipView(item: {
   netAmount: number;
   status: string;
   approvedBy: string | null;
-}, serviceUserName: string): WageSlipView {
+}, serviceUserName: string, dayStatusSummary: WageSlipView['dayStatusSummary']): WageSlipView {
   const month = `${item.year}-${String(item.month).padStart(2, '0')}`;
   const closingDate = lastDayOfMonth(item.year, item.month);
   return {
@@ -437,6 +519,7 @@ function buildSlipView(item: {
     remarks: toRemarks(item.status),
     approverId: item.approvedBy || '',
     issuedAt: new Date().toISOString(),
+    dayStatusSummary,
   };
 }
 
