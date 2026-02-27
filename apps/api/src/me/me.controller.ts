@@ -55,7 +55,7 @@ export class MeController {
   @Get('wage-summary')
   @Roles('user')
   @ApiRolesNote('user')
-  @ApiOperation({ summary: '利用者向け工賃サマリーを取得' })
+  @ApiOperation({ summary: '利用者向け賃金サマリーを取得' })
   @ApiOkResponse({
     type: WageSummaryResponseDto,
     example: {

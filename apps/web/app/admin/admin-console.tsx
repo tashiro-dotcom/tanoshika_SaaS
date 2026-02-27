@@ -482,9 +482,9 @@ export default function AdminConsole() {
     try {
       const data = await fetchJson<WageTemplatesResponse>('/wages/templates', accessToken.trim());
       setWageTemplates(data);
-      setOpsInfo('工賃テンプレートを取得しました。');
+      setOpsInfo('賃金テンプレートを取得しました。');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '工賃テンプレートの取得に失敗しました');
+      setError(err instanceof Error ? err.message : '賃金テンプレートの取得に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -507,9 +507,9 @@ export default function AdminConsole() {
         setApproveWageId(data.items[0].id);
         setSlipWageId(data.items[0].id);
       }
-      setOpsInfo(`月次工賃を計算しました（${data.count}件）。`);
+      setOpsInfo(`月次賃金を計算しました（${data.count}件）。`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '月次工賃計算に失敗しました');
+      setError(err instanceof Error ? err.message : '月次賃金計算に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -529,9 +529,9 @@ export default function AdminConsole() {
       );
       setWageCalculations((prev) => [item, ...prev.filter((x) => x.id !== item.id)]);
       setSlipWageId(item.id);
-      setOpsInfo('工賃計算を承認しました。');
+      setOpsInfo('賃金計算を承認しました。');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '工賃承認に失敗しました');
+      setError(err instanceof Error ? err.message : '賃金承認に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -546,9 +546,9 @@ export default function AdminConsole() {
     try {
       const item = await fetchJson<WageSlip>(`/wages/${slipWageId.trim()}/slip`, accessToken.trim());
       setWageSlip(item);
-      setOpsInfo('工賃明細(JSON)を取得しました。');
+      setOpsInfo('賃金明細(JSON)を取得しました。');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '工賃明細(JSON)の取得に失敗しました');
+      setError(err instanceof Error ? err.message : '賃金明細(JSON)の取得に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -580,9 +580,9 @@ export default function AdminConsole() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setOpsInfo(`工賃明細(${format.toUpperCase()})をダウンロードしました。`);
+      setOpsInfo(`賃金明細(${format.toUpperCase()})をダウンロードしました。`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : `工賃明細(${format.toUpperCase()})の取得に失敗しました`);
+      setError(err instanceof Error ? err.message : `賃金明細(${format.toUpperCase()})の取得に失敗しました`);
     } finally {
       setLoading(false);
     }
@@ -793,7 +793,7 @@ export default function AdminConsole() {
           <li>「利用者一覧を取得」で対象利用者を読み込む</li>
           <li>当日運用は「勤怠管理」で出勤/退勤を打刻する</li>
           <li>打刻ミス時は「修正申請」を作成し、管理者が承認する</li>
-          <li>月末は「工賃管理」で計算→承認→明細出力する</li>
+          <li>月末は「賃金管理」で計算→承認→明細出力する</li>
         </ol>
         <p className="small">操作結果は画面上部のメッセージ欄に表示されます。</p>
       </section>
@@ -1320,9 +1320,9 @@ export default function AdminConsole() {
       </section>
 
       <section className="card">
-        <h2>4. 工賃管理</h2>
+        <h2>4. 賃金管理</h2>
         <form onSubmit={calculateMonthlyWages}>
-          <h3 style={{ margin: '0 0 8px' }}>月次工賃計算</h3>
+          <h3 style={{ margin: '0 0 8px' }}>月次賃金計算</h3>
           <div className="grid-2">
             <label className="field">
               <span>年</span>
@@ -1345,24 +1345,24 @@ export default function AdminConsole() {
               />
             </label>
           </div>
-          <button disabled={!tokenReady || loading} type="submit">月次工賃を計算</button>
+          <button disabled={!tokenReady || loading} type="submit">月次賃金を計算</button>
         </form>
         <form onSubmit={approveWageCalculation} style={{ marginTop: 12 }}>
-          <h3 style={{ margin: '0 0 8px' }}>工賃承認</h3>
+          <h3 style={{ margin: '0 0 8px' }}>賃金承認</h3>
           <label className="field">
-            <span>工賃計算ID</span>
+            <span>賃金計算ID</span>
             <input
               value={approveWageId}
               onChange={(e) => setApproveWageId(e.target.value)}
               placeholder="UUIDを入力（下表から選択可）"
             />
           </label>
-          <button disabled={!tokenReady || loading || !approveWageId.trim()} type="submit">工賃を承認</button>
+          <button disabled={!tokenReady || loading || !approveWageId.trim()} type="submit">賃金を承認</button>
         </form>
         <form onSubmit={loadWageSlipJson} style={{ marginTop: 12 }}>
-          <h3 style={{ margin: '0 0 8px' }}>工賃明細</h3>
+          <h3 style={{ margin: '0 0 8px' }}>賃金明細</h3>
           <label className="field">
-            <span>対象工賃ID</span>
+            <span>対象賃金ID</span>
             <input
               value={slipWageId}
               onChange={(e) => setSlipWageId(e.target.value)}

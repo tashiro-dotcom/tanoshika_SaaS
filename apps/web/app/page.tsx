@@ -8,7 +8,7 @@ const endpointGroups = [
     items: ['GET/POST/PATCH /service-users', 'PATCH /service-users/:id/status', 'GET/POST/PATCH /support-plans', 'GET/POST/PATCH /support-records'],
   },
   {
-    title: '勤怠・工賃',
+    title: '勤怠・賃金',
     items: ['POST /attendance/clock-in', 'POST /attendance/clock-out', 'POST /attendance-corrections', 'POST /wages/calculate-monthly'],
   },
 ];
