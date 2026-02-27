@@ -153,6 +153,7 @@ const apiErrorCodeMessages: Record<string, string> = {
   invalid_date_range: '日付範囲が不正です（from は to 以下にしてください）。',
   open_clock_in_not_found: '未退勤の出勤打刻が見つかりません。',
   validation_error: '入力値が不正です。必須項目と形式を確認してください。',
+  change_reason_required: 'ルール変更理由を入力してください。',
 };
 
 type ApiErrorPayload = {
@@ -253,6 +254,7 @@ export default function AdminConsole() {
     scheduledHolidayPolicy: 'fixed_zero',
     specialLeavePolicy: 'fixed_standard',
   });
+  const [wageRuleChangeReason, setWageRuleChangeReason] = useState('');
   const [wageCalculations, setWageCalculations] = useState<WageCalculationItem[]>([]);
   const [wageSlip, setWageSlip] = useState<WageSlip | null>(null);
   const [wageYear, setWageYear] = useState(new Date().getFullYear());
@@ -542,8 +544,17 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     try {
-      const data = await sendJson<WageRules>('PUT', '/wages/rules', wageRules, accessToken.trim());
+      const data = await sendJson<WageRules>(
+        'PUT',
+        '/wages/rules',
+        {
+          ...wageRules,
+          changeReason: wageRuleChangeReason,
+        },
+        accessToken.trim(),
+      );
       setWageRules(data);
+      setWageRuleChangeReason('');
       setOpsInfo('賃金計算ルールを更新しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '賃金計算ルールの更新に失敗しました');
@@ -1469,6 +1480,15 @@ export default function AdminConsole() {
               </select>
             </label>
           </div>
+          <label className="field">
+            <span>変更理由（監査ログ用・必須）</span>
+            <input
+              value={wageRuleChangeReason}
+              onChange={(e) => setWageRuleChangeReason(e.target.value)}
+              placeholder="例: 2026年4月運用見直しのため"
+              required
+            />
+          </label>
           <button disabled={!tokenReady || loading} type="submit">ルールを保存</button>
         </form>
         <form onSubmit={calculateMonthlyWages}>

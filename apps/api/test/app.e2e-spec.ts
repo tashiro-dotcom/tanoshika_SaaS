@@ -385,6 +385,7 @@ describe('Major Workflow (e2e)', () => {
         paidLeavePolicy: 'fixed_standard',
         scheduledHolidayPolicy: 'fixed_zero',
         specialLeavePolicy: 'fixed_standard',
+        changeReason: '有給算定ルール見直し',
       })
       .expect(200);
 
@@ -397,6 +398,20 @@ describe('Major Workflow (e2e)', () => {
 
     expect(getRes.body.standardDailyHours).toBe(6);
     expect(getRes.body.paidLeavePolicy).toBe('fixed_standard');
+
+    await request(app.getHttpServer())
+      .put('/wages/rules')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        standardDailyHours: 6,
+        presentPolicy: 'actual_only',
+        absentPolicy: 'fixed_zero',
+        paidLeavePolicy: 'fixed_standard',
+        scheduledHolidayPolicy: 'fixed_zero',
+        specialLeavePolicy: 'fixed_standard',
+        changeReason: '   ',
+      })
+      .expect(400);
   });
 
   it('keeps list APIs scoped to organization and validates attendance date range', async () => {
