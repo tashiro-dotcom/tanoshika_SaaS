@@ -47,6 +47,16 @@
 - `GET /wages/:id/slip.csv`
 - `GET /wages/:id/slip.pdf`
 
+### 月次工賃計算ルール（MVP）
+- 実績打刻（`attendance_logs`）を基準に時間集計
+- 日別区分（`attendance_day_statuses`）がある日は以下で上書き
+  - `present` : 実績時間をそのまま使用
+  - `absent` : 0時間
+  - `scheduled_holiday` : 0時間
+  - `paid_leave` : 標準日時間（既定4時間）
+  - `special_leave` : 標準日時間（既定4時間）
+- `POST /wages/calculate-monthly` レスポンスに `dayStatusSummary`（実績時間/反映時間/差分/区分件数）を含む
+
 ### Export Endpoints (CSV/PDF)
 - `GET /wages/:id/slip.csv`
   - `Content-Type: text/csv; charset=utf-8`

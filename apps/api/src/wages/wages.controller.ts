@@ -9,6 +9,7 @@ import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
 import { CalculateMonthlyWagesDto } from './wages.dto';
+import { AttendanceDayStatusRule, getWageCalculationRules } from './wage-calculation-rules';
 import { getMunicipalityTemplate, listMunicipalityTemplates, WageSlipView } from './wage-slip-template';
 import {
   WageCalculateResponseDto,
@@ -20,6 +21,10 @@ import {
 function hoursBetween(start: Date, end: Date | null): number {
   if (!end) return 0;
   return Math.max(0, (end.getTime() - start.getTime()) / 1000 / 60 / 60);
+}
+
+function toDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
 @ApiTags('Wages')
@@ -87,22 +92,80 @@ export class WagesController {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
     const start = new Date(Date.UTC(body.year, body.month - 1, 1));
     const end = new Date(Date.UTC(body.year, body.month, 1));
+    const rules = getWageCalculationRules(org);
 
     const logs = await this.prisma.attendanceLog.findMany({
       where: {
         organizationId: org,
         clockInAt: { gte: start, lt: end },
       },
-      orderBy: { serviceUserId: 'asc' },
+      orderBy: [{ serviceUserId: 'asc' }, { clockInAt: 'asc' }],
+    });
+
+    const dayStatuses = await this.prisma.attendanceDayStatus.findMany({
+      where: {
+        organizationId: org,
+        workDate: { gte: start, lt: end },
+      },
+      orderBy: [{ serviceUserId: 'asc' }, { workDate: 'asc' }],
     });
 
     const grouped: Record<string, number> = {};
+    const workedByServiceUserDate: Record<string, Record<string, number>> = {};
     for (const log of logs) {
-      grouped[log.serviceUserId] = (grouped[log.serviceUserId] || 0) + hoursBetween(log.clockInAt, log.clockOutAt);
+      const worked = hoursBetween(log.clockInAt, log.clockOutAt);
+      grouped[log.serviceUserId] = (grouped[log.serviceUserId] || 0) + worked;
+      const dateKey = toDateKey(log.clockInAt);
+      workedByServiceUserDate[log.serviceUserId] = workedByServiceUserDate[log.serviceUserId] || {};
+      workedByServiceUserDate[log.serviceUserId][dateKey] =
+        (workedByServiceUserDate[log.serviceUserId][dateKey] || 0) + worked;
+    }
+
+    const statusesByServiceUserDate: Record<string, Record<string, AttendanceDayStatusRule>> = {};
+    for (const item of dayStatuses) {
+      const dateKey = toDateKey(item.workDate);
+      statusesByServiceUserDate[item.serviceUserId] = statusesByServiceUserDate[item.serviceUserId] || {};
+      statusesByServiceUserDate[item.serviceUserId][dateKey] = item.status as AttendanceDayStatusRule;
     }
 
     const items = [];
-    for (const [serviceUserId, totalHours] of Object.entries(grouped)) {
+    const serviceUserIds = new Set<string>([
+      ...Object.keys(grouped),
+      ...Object.keys(statusesByServiceUserDate),
+    ]);
+    for (const serviceUserId of serviceUserIds) {
+      const perDateWorked = { ...(workedByServiceUserDate[serviceUserId] || {}) };
+      const statusPerDate = statusesByServiceUserDate[serviceUserId] || {};
+      const summaryCounts = {
+        present: 0,
+        absent: 0,
+        paid_leave: 0,
+        scheduled_holiday: 0,
+        special_leave: 0,
+      };
+
+      for (const [dateKey, status] of Object.entries(statusPerDate)) {
+        if (status in summaryCounts) {
+          summaryCounts[status as keyof typeof summaryCounts] += 1;
+        }
+        const currentHours = perDateWorked[dateKey] || 0;
+        const policy = rules.statusPolicies[status];
+        if (policy === 'fixed_zero') {
+          perDateWorked[dateKey] = 0;
+        } else if (policy === 'fixed_standard') {
+          perDateWorked[dateKey] = rules.standardDailyHours;
+        } else {
+          perDateWorked[dateKey] = currentHours;
+        }
+      }
+
+      const actualWorkedHours = Number((grouped[serviceUserId] || 0).toFixed(2));
+      const adjustedHours = Number(
+        Object.values(perDateWorked)
+          .reduce((acc, x) => acc + x, 0)
+          .toFixed(2),
+      );
+
       const rate = await this.prisma.wageRate.findFirst({
         where: {
           organizationId: org,
@@ -114,7 +177,7 @@ export class WagesController {
       });
 
       const hourlyRate = rate?.hourlyRate || 1000;
-      const gross = Math.round(totalHours * hourlyRate);
+      const gross = Math.round(adjustedHours * hourlyRate);
 
       const calc = await this.prisma.wageCalculation.create({
         data: {
@@ -122,7 +185,7 @@ export class WagesController {
           serviceUserId,
           year: body.year,
           month: body.month,
-          totalHours: Number(totalHours.toFixed(2)),
+          totalHours: adjustedHours,
           hourlyRate,
           grossAmount: gross,
           deductions: 0,
@@ -131,7 +194,16 @@ export class WagesController {
         },
       });
 
-      items.push(calc);
+      items.push({
+        ...calc,
+        dayStatusSummary: {
+          standardDailyHours: rules.standardDailyHours,
+          actualWorkedHours,
+          adjustedHours,
+          deltaHours: Number((adjustedHours - actualWorkedHours).toFixed(2)),
+          counts: summaryCounts,
+        },
+      });
     }
 
     await this.audit.log({
@@ -140,7 +212,10 @@ export class WagesController {
       action: 'CALCULATE',
       entity: 'wage_calculations',
       entityId: `${body.year}-${body.month}`,
-      detail: { count: items.length },
+      detail: {
+        count: items.length,
+        rules,
+      },
     });
 
     return { count: items.length, items };

@@ -49,6 +49,19 @@ type WageCalculationItem = {
   grossAmount: number;
   netAmount: number;
   status: string;
+  dayStatusSummary?: {
+    standardDailyHours: number;
+    actualWorkedHours: number;
+    adjustedHours: number;
+    deltaHours: number;
+    counts: {
+      present: number;
+      absent: number;
+      paid_leave: number;
+      scheduled_holiday: number;
+      special_leave: number;
+    };
+  };
 };
 
 type WageCalculateResponse = {
@@ -1396,6 +1409,7 @@ export default function AdminConsole() {
               <th>対象</th>
               <th>時間</th>
               <th>支給額</th>
+              <th>区分反映内訳</th>
               <th>状態</th>
             </tr>
           </thead>
@@ -1410,12 +1424,27 @@ export default function AdminConsole() {
                 <td>{item.year}-{String(item.month).padStart(2, '0')} / {item.serviceUserId.slice(0, 8)}</td>
                 <td>{item.totalHours}h</td>
                 <td>{item.netAmount.toLocaleString('ja-JP')}円</td>
+                <td className="small">
+                  {item.dayStatusSummary ? (
+                    <>
+                      実績{item.dayStatusSummary.actualWorkedHours}h → 反映{item.dayStatusSummary.adjustedHours}h
+                      <br />
+                      Δ{item.dayStatusSummary.deltaHours >= 0 ? '+' : ''}
+                      {item.dayStatusSummary.deltaHours}h
+                      <br />
+                      欠勤:{item.dayStatusSummary.counts.absent} / 有給:{item.dayStatusSummary.counts.paid_leave} / 休日:
+                      {item.dayStatusSummary.counts.scheduled_holiday}
+                    </>
+                  ) : (
+                    '-'
+                  )}
+                </td>
                 <td>{item.status}</td>
               </tr>
             ))}
             {wageCalculations.length === 0 ? (
               <tr>
-                <td colSpan={5} className="small">計算データ未作成</td>
+                <td colSpan={6} className="small">計算データ未作成</td>
               </tr>
             ) : null}
           </tbody>
