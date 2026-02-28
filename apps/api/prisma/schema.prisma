@@ -184,6 +184,7 @@ model WageRuleChangeRequest {
   organizationId         String
   requestedBy            String
   reviewedBy             String?
+  reviewedComment        String?
   status                 String   @default("pending")
   changeReason           String
   standardDailyHours     Float

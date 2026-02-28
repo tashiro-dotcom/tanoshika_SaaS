@@ -45,6 +45,7 @@
 - `GET /wages/rules/requests`
 - `POST /wages/rules/requests`
 - `POST /wages/rules/requests/:id/approve`
+- `POST /wages/rules/requests/:id/reject`
 - `POST /wages/calculate-monthly`
 - `POST /wages/:id/approve`
 - `GET /wages/templates`
@@ -66,6 +67,7 @@
 - `PUT /wages/rules` は `changeReason`（変更理由）必須。監査ログへ `before/after/changeReason` を記録
 - `POST /wages/rules/requests` で賃金ルール変更申請（pending）を作成し、`POST /wages/rules/requests/:id/approve` で承認適用
 - 承認は申請者と別ユーザーのみ可能（同一ユーザー承認は403）
+- `POST /wages/rules/requests/:id/reject` で却下可能。`reviewComment`（却下理由）必須で、監査ログに却下理由を記録
 
 ### Export Endpoints (CSV/PDF)
 - `GET /wages/:id/slip.csv`

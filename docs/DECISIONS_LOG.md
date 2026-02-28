@@ -57,6 +57,7 @@
 - 事業所ごとの賃金計算ルールをDB保存する方式へ移行（`GET/PUT /wages/rules`）。ルール更新は監査ログへ `UPDATE_RULES` として記録
 - 賃金ルール更新API（`PUT /wages/rules`）は変更理由 `changeReason` を必須化し、監査ログへ `before/after/changeReason` を記録する
 - 賃金ルール変更は軽量承認フローを追加（`POST /wages/rules/requests` -> `POST /wages/rules/requests/:id/approve`）。申請者本人の承認は禁止
+- 賃金ルール変更申請の却下フローを追加（`POST /wages/rules/requests/:id/reject`）。却下理由 `reviewComment` を必須化し監査ログへ記録
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）

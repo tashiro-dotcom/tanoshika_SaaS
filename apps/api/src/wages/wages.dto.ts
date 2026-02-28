@@ -59,3 +59,10 @@ export class WageRuleRequestQueryDto {
   @IsIn(['pending', 'approved', 'rejected'])
   status?: 'pending' | 'approved' | 'rejected';
 }
+
+export class RejectWageRuleRequestDto {
+  @ApiProperty({ example: '根拠資料不足のため差し戻し', description: '却下理由（監査ログ用）' })
+  @IsString()
+  @MinLength(1)
+  reviewComment!: string;
+}

@@ -8,7 +8,7 @@ import { IdParamDto } from '../common/param.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
-import { CalculateMonthlyWagesDto, UpdateWageRulesDto, WageRuleRequestQueryDto } from './wages.dto';
+import { CalculateMonthlyWagesDto, RejectWageRuleRequestDto, UpdateWageRulesDto, WageRuleRequestQueryDto } from './wages.dto';
 import { applyWageRuleOverride, AttendanceDayStatusRule, DayStatusHoursPolicy } from './wage-calculation-rules';
 import { getMunicipalityTemplate, listMunicipalityTemplates, WageSlipView } from './wage-slip-template';
 import {
@@ -182,6 +182,56 @@ export class WagesController {
     });
 
     return approved;
+  }
+
+  @Post('rules/requests/:id/reject')
+  @Roles('admin', 'manager')
+  @ApiRolesNote('admin', 'manager')
+  @ApiOperation({ summary: '賃金ルール変更申請を却下' })
+  @ApiOkResponse({ type: WageRuleChangeRequestItemDto })
+  async rejectRuleRequest(@Req() req: any, @Param() params: IdParamDto, @Body() body: RejectWageRuleRequestDto) {
+    const org = req.user.organizationId || ORGANIZATION_DEFAULT;
+    const row = await this.prisma.wageRuleChangeRequest.findUnique({ where: { id: params.id } });
+    if (!row) throw new BadRequestException('not_found');
+    if (row.organizationId !== org) throw new ForbiddenException('organization_forbidden');
+    if (row.status !== 'pending') throw new BadRequestException('request_not_pending');
+    if (row.requestedBy === req.user.id) throw new ForbiddenException('reviewer_must_differ');
+
+    const reviewComment = body.reviewComment.trim();
+    if (!reviewComment) {
+      throw new BadRequestException('review_comment_required');
+    }
+    const rejected = await this.prisma.wageRuleChangeRequest.update({
+      where: { id: row.id },
+      data: {
+        status: 'rejected',
+        reviewedBy: req.user.id,
+        reviewedAt: new Date(),
+        reviewedComment: reviewComment,
+      },
+    });
+
+    await this.audit.log({
+      actorId: req.user.id,
+      organizationId: org,
+      action: 'REJECT_RULES_UPDATE_REQUEST',
+      entity: 'wage_rule_change_requests',
+      entityId: row.id,
+      detail: {
+        reviewComment,
+        request: {
+          changeReason: row.changeReason,
+          standardDailyHours: row.standardDailyHours,
+          presentPolicy: row.presentPolicy,
+          absentPolicy: row.absentPolicy,
+          paidLeavePolicy: row.paidLeavePolicy,
+          scheduledHolidayPolicy: row.scheduledHolidayPolicy,
+          specialLeavePolicy: row.specialLeavePolicy,
+        },
+      },
+    });
+
+    return rejected;
   }
 
   @Put('rules')

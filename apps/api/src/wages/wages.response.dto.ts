@@ -49,6 +49,9 @@ export class WageRuleChangeRequestItemDto {
   @ApiProperty({ format: 'uuid', required: false })
   reviewedBy!: string | null;
 
+  @ApiProperty({ required: false, example: '根拠資料不足のため差し戻し' })
+  reviewedComment!: string | null;
+
   @ApiProperty({ example: 'pending' })
   status!: string;
 
