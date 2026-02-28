@@ -52,6 +52,7 @@ type WageRuleChangeRequest = {
   id: string;
   requestedBy: string;
   reviewedBy: string | null;
+  reviewedComment?: string | null;
   status: string;
   changeReason: string;
   standardDailyHours: number;
@@ -171,6 +172,7 @@ const apiErrorCodeMessages: Record<string, string> = {
   change_reason_required: 'ルール変更理由を入力してください。',
   reviewer_must_differ: '申請者本人は承認できません。別ユーザーで承認してください。',
   request_not_pending: 'この申請は承認可能な状態ではありません。',
+  review_comment_required: '却下理由を入力してください。',
 };
 
 type ApiErrorPayload = {
@@ -273,6 +275,7 @@ export default function AdminConsole() {
   });
   const [wageRuleChangeReason, setWageRuleChangeReason] = useState('');
   const [wageRuleRequests, setWageRuleRequests] = useState<WageRuleChangeRequest[]>([]);
+  const [wageRuleReviewCommentById, setWageRuleReviewCommentById] = useState<Record<string, string>>({});
   const [wageCalculations, setWageCalculations] = useState<WageCalculationItem[]>([]);
   const [wageSlip, setWageSlip] = useState<WageSlip | null>(null);
   const [wageYear, setWageYear] = useState(new Date().getFullYear());
@@ -631,6 +634,31 @@ export default function AdminConsole() {
       setOpsInfo('賃金ルール変更申請を承認し、ルールへ適用しました。');
     } catch (err) {
       setError(err instanceof Error ? err.message : '賃金ルール変更申請の承認に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function rejectWageRuleRequest(requestId: string) {
+    if (!tokenReady) return;
+    const reviewComment = (wageRuleReviewCommentById[requestId] || '').trim();
+    if (!reviewComment) {
+      setError('却下理由を入力してください。');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await postJson<WageRuleChangeRequest>(
+        `/wages/rules/requests/${requestId}/reject`,
+        { reviewComment },
+        accessToken.trim(),
+      );
+      setWageRuleReviewCommentById((prev) => ({ ...prev, [requestId]: '' }));
+      await refreshWageRuleRequests(accessToken.trim());
+      setOpsInfo('賃金ルール変更申請を却下しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '賃金ルール変更申請の却下に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -1585,6 +1613,7 @@ export default function AdminConsole() {
               <th>標準時間</th>
               <th>申請者</th>
               <th>状態</th>
+              <th>却下理由</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -1597,6 +1626,18 @@ export default function AdminConsole() {
                 <td>{item.requestedBy.slice(0, 8)}</td>
                 <td>{item.status}</td>
                 <td>
+                  <input
+                    value={wageRuleReviewCommentById[item.id] || ''}
+                    onChange={(e) =>
+                      setWageRuleReviewCommentById((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.value,
+                      }))
+                    }
+                    placeholder="却下時のみ必須"
+                  />
+                </td>
+                <td>
                   <button
                     disabled={!tokenReady || loading || item.status !== 'pending'}
                     type="button"
@@ -1604,12 +1645,20 @@ export default function AdminConsole() {
                   >
                     承認
                   </button>
+                  <button
+                    style={{ marginLeft: 8 }}
+                    disabled={!tokenReady || loading || item.status !== 'pending'}
+                    type="button"
+                    onClick={() => void rejectWageRuleRequest(item.id)}
+                  >
+                    却下
+                  </button>
                 </td>
               </tr>
             ))}
             {wageRuleRequests.length === 0 ? (
               <tr>
-                <td colSpan={6} className="small">申請データ未取得</td>
+                <td colSpan={7} className="small">申請データ未取得</td>
               </tr>
             ) : null}
           </tbody>

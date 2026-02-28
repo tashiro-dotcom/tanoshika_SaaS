@@ -470,6 +470,46 @@ describe('Major Workflow (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
     expect(rulesRes.body.standardDailyHours).toBe(5.5);
+
+    const rejectTargetRes = await request(app.getHttpServer())
+      .post('/wages/rules/requests')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        standardDailyHours: 7,
+        presentPolicy: 'actual_only',
+        absentPolicy: 'fixed_zero',
+        paidLeavePolicy: 'fixed_standard',
+        scheduledHolidayPolicy: 'fixed_zero',
+        specialLeavePolicy: 'fixed_standard',
+        changeReason: 'これは却下される想定',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/wages/rules/requests/${rejectTargetRes.body.id}/reject`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ reviewComment: '自己却下は禁止' })
+      .expect(403);
+
+    const rejectRes = await request(app.getHttpServer())
+      .post(`/wages/rules/requests/${rejectTargetRes.body.id}/reject`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ reviewComment: '根拠不足のため却下' })
+      .expect(201);
+    expect(rejectRes.body.status).toBe('rejected');
+    expect(rejectRes.body.reviewedComment).toBe('根拠不足のため却下');
+
+    await request(app.getHttpServer())
+      .post(`/wages/rules/requests/${rejectTargetRes.body.id}/reject`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ reviewComment: '再却下' })
+      .expect(400);
+
+    const rulesAfterRejectRes = await request(app.getHttpServer())
+      .get('/wages/rules')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(rulesAfterRejectRes.body.standardDailyHours).toBe(5.5);
   });
 
   it('keeps list APIs scoped to organization and validates attendance date range', async () => {
