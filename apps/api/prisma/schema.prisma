@@ -179,6 +179,26 @@ model WageRuleSetting {
   updatedAt             DateTime @updatedAt
 }
 
+model WageRuleChangeRequest {
+  id                     String   @id @default(uuid())
+  organizationId         String
+  requestedBy            String
+  reviewedBy             String?
+  status                 String   @default("pending")
+  changeReason           String
+  standardDailyHours     Float
+  presentPolicy          String
+  absentPolicy           String
+  paidLeavePolicy        String
+  scheduledHolidayPolicy String
+  specialLeavePolicy     String
+  reviewedAt             DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([organizationId, status, createdAt])
+}
+
 model RefreshToken {
   id             String    @id @default(uuid())
   token          String    @unique

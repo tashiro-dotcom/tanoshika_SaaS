@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Put, Req, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Roles, RolesGuard } from '../common/authz';
@@ -8,11 +8,12 @@ import { IdParamDto } from '../common/param.dto';
 import { ApiCommonErrorResponses } from '../common/swagger-error.decorators';
 import { ApiRolesNote } from '../common/swagger-role.decorators';
 import { PrismaService } from '../prisma.service';
-import { CalculateMonthlyWagesDto, UpdateWageRulesDto } from './wages.dto';
+import { CalculateMonthlyWagesDto, UpdateWageRulesDto, WageRuleRequestQueryDto } from './wages.dto';
 import { applyWageRuleOverride, AttendanceDayStatusRule, DayStatusHoursPolicy } from './wage-calculation-rules';
 import { getMunicipalityTemplate, listMunicipalityTemplates, WageSlipView } from './wage-slip-template';
 import {
   WageCalculateResponseDto,
+  WageRuleChangeRequestItemDto,
   WageCalculationItemDto,
   WageRulesResponseDto,
   WageSlipResponseDto,
@@ -55,6 +56,132 @@ export class WagesController {
       scheduledHolidayPolicy: rules.statusPolicies.scheduled_holiday,
       specialLeavePolicy: rules.statusPolicies.special_leave,
     };
+  }
+
+  @Get('rules/requests')
+  @Roles('admin', 'manager')
+  @ApiRolesNote('admin', 'manager')
+  @ApiOperation({ summary: '賃金ルール変更申請を一覧取得' })
+  @ApiOkResponse({ type: WageRuleChangeRequestItemDto, isArray: true })
+  async listRuleRequests(@Req() req: any, @Query() query: WageRuleRequestQueryDto) {
+    const org = req.user.organizationId || ORGANIZATION_DEFAULT;
+    const rows = await this.prisma.wageRuleChangeRequest.findMany({
+      where: {
+        organizationId: org,
+        ...(query.status ? { status: query.status } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    return rows;
+  }
+
+  @Post('rules/requests')
+  @Roles('admin', 'manager')
+  @ApiRolesNote('admin', 'manager')
+  @ApiOperation({ summary: '賃金ルール変更申請を作成' })
+  @ApiOkResponse({ type: WageRuleChangeRequestItemDto })
+  async createRuleRequest(@Req() req: any, @Body() body: UpdateWageRulesDto) {
+    const org = req.user.organizationId || ORGANIZATION_DEFAULT;
+    const changeReason = body.changeReason.trim();
+    if (!changeReason) {
+      throw new BadRequestException('change_reason_required');
+    }
+    const row = await this.prisma.wageRuleChangeRequest.create({
+      data: {
+        organizationId: org,
+        requestedBy: req.user.id,
+        status: 'pending',
+        changeReason,
+        standardDailyHours: body.standardDailyHours,
+        presentPolicy: body.presentPolicy,
+        absentPolicy: body.absentPolicy,
+        paidLeavePolicy: body.paidLeavePolicy,
+        scheduledHolidayPolicy: body.scheduledHolidayPolicy,
+        specialLeavePolicy: body.specialLeavePolicy,
+      },
+    });
+
+    await this.audit.log({
+      actorId: req.user.id,
+      organizationId: org,
+      action: 'REQUEST_RULES_UPDATE',
+      entity: 'wage_rule_change_requests',
+      entityId: row.id,
+      detail: row,
+    });
+
+    return row;
+  }
+
+  @Post('rules/requests/:id/approve')
+  @Roles('admin', 'manager')
+  @ApiRolesNote('admin', 'manager')
+  @ApiOperation({ summary: '賃金ルール変更申請を承認して適用' })
+  @ApiOkResponse({ type: WageRuleChangeRequestItemDto })
+  async approveRuleRequest(@Req() req: any, @Param() params: IdParamDto) {
+    const org = req.user.organizationId || ORGANIZATION_DEFAULT;
+    const row = await this.prisma.wageRuleChangeRequest.findUnique({ where: { id: params.id } });
+    if (!row) throw new BadRequestException('not_found');
+    if (row.organizationId !== org) throw new ForbiddenException('organization_forbidden');
+    if (row.status !== 'pending') throw new BadRequestException('request_not_pending');
+    if (row.requestedBy === req.user.id) throw new ForbiddenException('reviewer_must_differ');
+
+    const before = await this.getWageRules(org);
+    await this.prisma.wageRuleSetting.upsert({
+      where: { organizationId: org },
+      update: {
+        standardDailyHours: row.standardDailyHours,
+        presentPolicy: row.presentPolicy,
+        absentPolicy: row.absentPolicy,
+        paidLeavePolicy: row.paidLeavePolicy,
+        scheduledHolidayPolicy: row.scheduledHolidayPolicy,
+        specialLeavePolicy: row.specialLeavePolicy,
+        updatedBy: req.user.id,
+      },
+      create: {
+        organizationId: org,
+        standardDailyHours: row.standardDailyHours,
+        presentPolicy: row.presentPolicy,
+        absentPolicy: row.absentPolicy,
+        paidLeavePolicy: row.paidLeavePolicy,
+        scheduledHolidayPolicy: row.scheduledHolidayPolicy,
+        specialLeavePolicy: row.specialLeavePolicy,
+        updatedBy: req.user.id,
+      },
+    });
+    const approved = await this.prisma.wageRuleChangeRequest.update({
+      where: { id: row.id },
+      data: {
+        status: 'approved',
+        reviewedBy: req.user.id,
+        reviewedAt: new Date(),
+      },
+    });
+
+    await this.audit.log({
+      actorId: req.user.id,
+      organizationId: org,
+      action: 'APPROVE_RULES_UPDATE_REQUEST',
+      entity: 'wage_rule_change_requests',
+      entityId: row.id,
+      detail: {
+        changeReason: row.changeReason,
+        before,
+        after: {
+          standardDailyHours: row.standardDailyHours,
+          statusPolicies: {
+            present: row.presentPolicy,
+            absent: row.absentPolicy,
+            paid_leave: row.paidLeavePolicy,
+            scheduled_holiday: row.scheduledHolidayPolicy,
+            special_leave: row.specialLeavePolicy,
+          },
+        },
+      },
+    });
+
+    return approved;
   }
 
   @Put('rules')

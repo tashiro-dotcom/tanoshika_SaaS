@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsNumber, IsString, Max, Min, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { DayStatusHoursPolicy } from './wage-calculation-rules';
 
@@ -51,4 +51,11 @@ export class UpdateWageRulesDto {
   @IsString()
   @MinLength(1)
   changeReason!: string;
+}
+
+export class WageRuleRequestQueryDto {
+  @ApiProperty({ required: false, enum: ['pending', 'approved', 'rejected'], example: 'pending' })
+  @IsOptional()
+  @IsIn(['pending', 'approved', 'rejected'])
+  status?: 'pending' | 'approved' | 'rejected';
 }
