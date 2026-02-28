@@ -48,6 +48,21 @@ type WageRules = {
   specialLeavePolicy: 'actual_only' | 'fixed_zero' | 'fixed_standard';
 };
 
+type WageRuleChangeRequest = {
+  id: string;
+  requestedBy: string;
+  reviewedBy: string | null;
+  status: string;
+  changeReason: string;
+  standardDailyHours: number;
+  presentPolicy: WageRules['presentPolicy'];
+  absentPolicy: WageRules['absentPolicy'];
+  paidLeavePolicy: WageRules['paidLeavePolicy'];
+  scheduledHolidayPolicy: WageRules['scheduledHolidayPolicy'];
+  specialLeavePolicy: WageRules['specialLeavePolicy'];
+  createdAt: string;
+};
+
 type WageCalculationItem = {
   id: string;
   serviceUserId: string;
@@ -154,6 +169,8 @@ const apiErrorCodeMessages: Record<string, string> = {
   open_clock_in_not_found: '未退勤の出勤打刻が見つかりません。',
   validation_error: '入力値が不正です。必須項目と形式を確認してください。',
   change_reason_required: 'ルール変更理由を入力してください。',
+  reviewer_must_differ: '申請者本人は承認できません。別ユーザーで承認してください。',
+  request_not_pending: 'この申請は承認可能な状態ではありません。',
 };
 
 type ApiErrorPayload = {
@@ -255,6 +272,7 @@ export default function AdminConsole() {
     specialLeavePolicy: 'fixed_standard',
   });
   const [wageRuleChangeReason, setWageRuleChangeReason] = useState('');
+  const [wageRuleRequests, setWageRuleRequests] = useState<WageRuleChangeRequest[]>([]);
   const [wageCalculations, setWageCalculations] = useState<WageCalculationItem[]>([]);
   const [wageSlip, setWageSlip] = useState<WageSlip | null>(null);
   const [wageYear, setWageYear] = useState(new Date().getFullYear());
@@ -561,6 +579,71 @@ export default function AdminConsole() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadWageRuleRequests(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await fetchJson<WageRuleChangeRequest[]>('/wages/rules/requests?status=pending', accessToken.trim());
+      setWageRuleRequests(data);
+      setOpsInfo(`賃金ルール変更申請を取得しました（${data.length}件）。`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '賃金ルール変更申請の取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createWageRuleRequest(e: FormEvent) {
+    e.preventDefault();
+    if (!tokenReady) return;
+    setLoading(true);
+    setError('');
+    try {
+      const created = await postJson<WageRuleChangeRequest>(
+        '/wages/rules/requests',
+        {
+          ...wageRules,
+          changeReason: wageRuleChangeReason,
+        },
+        accessToken.trim(),
+      );
+      setWageRuleChangeReason('');
+      setWageRuleRequests((prev) => [created, ...prev]);
+      setOpsInfo('賃金ルール変更申請を作成しました。別ユーザーで承認してください。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '賃金ルール変更申請の作成に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approveWageRuleRequest(requestId: string) {
+    if (!tokenReady) return;
+    setLoading(true);
+    setError('');
+    try {
+      await postJson<WageRuleChangeRequest>(`/wages/rules/requests/${requestId}/approve`, {}, accessToken.trim());
+      await Promise.all([refreshWageRules(accessToken.trim()), refreshWageRuleRequests(accessToken.trim())]);
+      setOpsInfo('賃金ルール変更申請を承認し、ルールへ適用しました。');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '賃金ルール変更申請の承認に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refreshWageRules(token: string) {
+    const data = await fetchJson<WageRules>('/wages/rules', token);
+    setWageRules(data);
+  }
+
+  async function refreshWageRuleRequests(token: string) {
+    const data = await fetchJson<WageRuleChangeRequest[]>('/wages/rules/requests?status=pending', token);
+    setWageRuleRequests(data);
   }
 
   async function calculateMonthlyWages(e: FormEvent) {
@@ -1398,7 +1481,7 @@ export default function AdminConsole() {
           <h3 style={{ margin: '0 0 8px' }}>賃金計算ルール</h3>
           <button disabled={!tokenReady || loading} type="submit">ルールを取得</button>
         </form>
-        <form onSubmit={saveWageRules} style={{ marginTop: 12 }}>
+        <form onSubmit={createWageRuleRequest} style={{ marginTop: 12 }}>
           <div className="grid-2">
             <label className="field">
               <span>標準日時間</span>
@@ -1489,7 +1572,50 @@ export default function AdminConsole() {
               required
             />
           </label>
-          <button disabled={!tokenReady || loading} type="submit">ルールを保存</button>
+          <button disabled={!tokenReady || loading} type="submit">変更申請を作成</button>
+        </form>
+        <form onSubmit={loadWageRuleRequests} style={{ marginTop: 8 }}>
+          <button disabled={!tokenReady || loading} type="submit">変更申請を取得</button>
+        </form>
+        <table className="table" style={{ marginTop: 8 }}>
+          <thead>
+            <tr>
+              <th>申請ID</th>
+              <th>理由</th>
+              <th>標準時間</th>
+              <th>申請者</th>
+              <th>状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {wageRuleRequests.map((item) => (
+              <tr key={item.id}>
+                <td>{item.id.slice(0, 8)}</td>
+                <td>{item.changeReason}</td>
+                <td>{item.standardDailyHours}</td>
+                <td>{item.requestedBy.slice(0, 8)}</td>
+                <td>{item.status}</td>
+                <td>
+                  <button
+                    disabled={!tokenReady || loading || item.status !== 'pending'}
+                    type="button"
+                    onClick={() => void approveWageRuleRequest(item.id)}
+                  >
+                    承認
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {wageRuleRequests.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="small">申請データ未取得</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+        <form onSubmit={saveWageRules} style={{ marginTop: 12 }}>
+          <button disabled={!tokenReady || loading} type="submit">管理者が直接保存（互換）</button>
         </form>
         <form onSubmit={calculateMonthlyWages}>
           <h3 style={{ margin: '0 0 8px' }}>月次賃金計算</h3>

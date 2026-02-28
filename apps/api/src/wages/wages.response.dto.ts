@@ -36,6 +36,53 @@ export class WageRulesResponseDto {
   specialLeavePolicy!: string;
 }
 
+export class WageRuleChangeRequestItemDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 'org-1' })
+  organizationId!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  requestedBy!: string;
+
+  @ApiProperty({ format: 'uuid', required: false })
+  reviewedBy!: string | null;
+
+  @ApiProperty({ example: 'pending' })
+  status!: string;
+
+  @ApiProperty({ example: '有給算定ルール見直し' })
+  changeReason!: string;
+
+  @ApiProperty({ example: 4 })
+  standardDailyHours!: number;
+
+  @ApiProperty({ example: 'actual_only' })
+  presentPolicy!: string;
+
+  @ApiProperty({ example: 'fixed_zero' })
+  absentPolicy!: string;
+
+  @ApiProperty({ example: 'fixed_standard' })
+  paidLeavePolicy!: string;
+
+  @ApiProperty({ example: 'fixed_zero' })
+  scheduledHolidayPolicy!: string;
+
+  @ApiProperty({ example: 'fixed_standard' })
+  specialLeavePolicy!: string;
+
+  @ApiProperty({ format: 'date-time', required: false })
+  reviewedAt!: string | null;
+
+  @ApiProperty({ format: 'date-time' })
+  createdAt!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  updatedAt!: string;
+}
+
 export class WageCalculationItemDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;

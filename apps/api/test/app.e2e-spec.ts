@@ -13,6 +13,7 @@ describe('Major Workflow (e2e)', () => {
   let prisma: PrismaService;
   let admin: StaffUser;
   let otherAdmin: StaffUser;
+  let managerUser: StaffUser;
   let staffUser: StaffUser;
   let serviceUserId: string;
   let otherOrgServiceUserId: string;
@@ -23,12 +24,15 @@ describe('Major Workflow (e2e)', () => {
   const adminEmail = 'admin.e2e@example.com';
   const otherAdminEmail = 'admin.other.e2e@example.com';
   const staffEmail = 'staff.e2e@example.com';
+  const managerEmail = 'manager.e2e@example.com';
   const adminPassword = 'Admin123!';
   const otherAdminPassword = 'Admin456!';
   const staffPassword = 'Staff123!';
+  const managerPassword = 'Manager123!';
   const adminMfaSecret = 'JBSWY3DPEHPK3PXP';
   const otherAdminMfaSecret = 'JBSWY3DPEHPK3PXQ';
   const staffMfaSecret = 'JBSWY3DPEHPK3PXR';
+  const managerMfaSecret = 'JBSWY3DPEHPK3PXS';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -87,6 +91,17 @@ describe('Major Workflow (e2e)', () => {
         passwordHash: await hash(staffPassword, 10),
         mfaEnabled: true,
         mfaSecret: staffMfaSecret,
+      },
+    });
+    managerUser = await prisma.staffUser.create({
+      data: {
+        organizationId,
+        email: managerEmail,
+        name: 'Manager E2E',
+        role: 'manager',
+        passwordHash: await hash(managerPassword, 10),
+        mfaEnabled: true,
+        mfaSecret: managerMfaSecret,
       },
     });
 
@@ -412,6 +427,49 @@ describe('Major Workflow (e2e)', () => {
         changeReason: '   ',
       })
       .expect(400);
+  });
+
+  it('creates wage rule request and approves with different reviewer', async () => {
+    const managerToken = await loginAndGetAccessToken(managerEmail, managerPassword, managerMfaSecret);
+    const adminToken = await loginAndGetAccessToken(adminEmail, adminPassword, adminMfaSecret);
+
+    const requestRes = await request(app.getHttpServer())
+      .post('/wages/rules/requests')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        standardDailyHours: 5.5,
+        presentPolicy: 'actual_only',
+        absentPolicy: 'fixed_zero',
+        paidLeavePolicy: 'fixed_standard',
+        scheduledHolidayPolicy: 'fixed_zero',
+        specialLeavePolicy: 'fixed_standard',
+        changeReason: '年度運用見直し',
+      })
+      .expect(201);
+
+    expect(requestRes.body.status).toBe('pending');
+    expect(requestRes.body.requestedBy).toBe(managerUser.id);
+
+    await request(app.getHttpServer())
+      .post(`/wages/rules/requests/${requestRes.body.id}/approve`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({})
+      .expect(403);
+
+    const approveRes = await request(app.getHttpServer())
+      .post(`/wages/rules/requests/${requestRes.body.id}/approve`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(201);
+
+    expect(approveRes.body.status).toBe('approved');
+    expect(approveRes.body.reviewedBy).toBe(admin.id);
+
+    const rulesRes = await request(app.getHttpServer())
+      .get('/wages/rules')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(rulesRes.body.standardDailyHours).toBe(5.5);
   });
 
   it('keeps list APIs scoped to organization and validates attendance date range', async () => {

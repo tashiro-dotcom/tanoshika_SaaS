@@ -56,6 +56,7 @@
 - 賃金明細（JSON/CSV/PDF）にも日別区分反映内訳（実績時間/反映時間/差分/区分件数）を表示し、月次計算結果との説明整合を確保
 - 事業所ごとの賃金計算ルールをDB保存する方式へ移行（`GET/PUT /wages/rules`）。ルール更新は監査ログへ `UPDATE_RULES` として記録
 - 賃金ルール更新API（`PUT /wages/rules`）は変更理由 `changeReason` を必須化し、監査ログへ `before/after/changeReason` を記録する
+- 賃金ルール変更は軽量承認フローを追加（`POST /wages/rules/requests` -> `POST /wages/rules/requests/:id/approve`）。申請者本人の承認は禁止
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
