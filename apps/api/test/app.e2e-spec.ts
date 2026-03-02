@@ -359,7 +359,7 @@ describe('Major Workflow (e2e)', () => {
 
   it('applies attendance day status rules to wage calculation', async () => {
     const adminToken = await loginAndGetAccessToken(adminEmail, adminPassword, adminMfaSecret);
-    const targetDate = '2026-03-15';
+    const targetDate = '2099-01-15';
 
     await request(app.getHttpServer())
       .post('/attendance-statuses/upsert')
@@ -375,7 +375,7 @@ describe('Major Workflow (e2e)', () => {
     const calcRes = await request(app.getHttpServer())
       .post('/wages/calculate-monthly')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ year: 2026, month: 3 })
+      .send({ year: 2099, month: 1 })
       .expect(201);
 
     const row = calcRes.body.items.find((x: any) => x.serviceUserId === serviceUserId);
@@ -510,6 +510,17 @@ describe('Major Workflow (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
     expect(rulesAfterRejectRes.body.standardDailyHours).toBe(5.5);
+
+    const rejectedListRes = await request(app.getHttpServer())
+      .get('/wages/rules/requests?status=rejected')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(Array.isArray(rejectedListRes.body)).toBe(true);
+    expect(
+      rejectedListRes.body.some(
+        (x: any) => x.id === rejectTargetRes.body.id && x.reviewedComment === '根拠不足のため却下',
+      ),
+    ).toBe(true);
   });
 
   it('keeps list APIs scoped to organization and validates attendance date range', async () => {

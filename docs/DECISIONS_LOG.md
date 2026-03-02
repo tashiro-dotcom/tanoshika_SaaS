@@ -58,8 +58,10 @@
 - 賃金ルール更新API（`PUT /wages/rules`）は変更理由 `changeReason` を必須化し、監査ログへ `before/after/changeReason` を記録する
 - 賃金ルール変更は軽量承認フローを追加（`POST /wages/rules/requests` -> `POST /wages/rules/requests/:id/approve`）。申請者本人の承認は禁止
 - 賃金ルール変更申請の却下フローを追加（`POST /wages/rules/requests/:id/reject`）。却下理由 `reviewComment` を必須化し監査ログへ記録
+- 管理画面 `/admin` の賃金ルール申請一覧は履歴確認用途で `status/from/to` フィルタ対応（pending 以外の承認/却下履歴も参照）
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
 - 「何を」「なぜ」「影響範囲」を短く残す
 - 運用に影響する変更は必ずここに追記
+- E2Eの賃金日別区分テストを月データ干渉しないよう安定化
