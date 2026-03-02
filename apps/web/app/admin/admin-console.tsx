@@ -204,6 +204,25 @@ function apiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
 }
 
+function buildWageRuleRequestQueryPath(
+  status: 'all' | 'pending' | 'approved' | 'rejected',
+  fromLocal: string,
+  toLocal: string,
+): string {
+  const params = new URLSearchParams();
+  if (status !== 'all') {
+    params.set('status', status);
+  }
+  if (fromLocal) {
+    params.set('from', new Date(fromLocal).toISOString());
+  }
+  if (toLocal) {
+    params.set('to', new Date(toLocal).toISOString());
+  }
+  const q = params.toString();
+  return q ? `/wages/rules/requests?${q}` : '/wages/rules/requests';
+}
+
 async function fetchJson<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`${apiBaseUrl()}${path}`, {
     headers: {
@@ -276,6 +295,9 @@ export default function AdminConsole() {
   const [wageRuleChangeReason, setWageRuleChangeReason] = useState('');
   const [wageRuleRequests, setWageRuleRequests] = useState<WageRuleChangeRequest[]>([]);
   const [wageRuleReviewCommentById, setWageRuleReviewCommentById] = useState<Record<string, string>>({});
+  const [wageRuleRequestStatusFilter, setWageRuleRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [wageRuleRequestFrom, setWageRuleRequestFrom] = useState('');
+  const [wageRuleRequestTo, setWageRuleRequestTo] = useState('');
   const [wageCalculations, setWageCalculations] = useState<WageCalculationItem[]>([]);
   const [wageSlip, setWageSlip] = useState<WageSlip | null>(null);
   const [wageYear, setWageYear] = useState(new Date().getFullYear());
@@ -590,7 +612,10 @@ export default function AdminConsole() {
     setLoading(true);
     setError('');
     try {
-      const data = await fetchJson<WageRuleChangeRequest[]>('/wages/rules/requests?status=pending', accessToken.trim());
+      const data = await fetchJson<WageRuleChangeRequest[]>(
+        buildWageRuleRequestQueryPath(wageRuleRequestStatusFilter, wageRuleRequestFrom, wageRuleRequestTo),
+        accessToken.trim(),
+      );
       setWageRuleRequests(data);
       setOpsInfo(`賃金ルール変更申請を取得しました（${data.length}件）。`);
     } catch (err) {
@@ -670,7 +695,10 @@ export default function AdminConsole() {
   }
 
   async function refreshWageRuleRequests(token: string) {
-    const data = await fetchJson<WageRuleChangeRequest[]>('/wages/rules/requests?status=pending', token);
+    const data = await fetchJson<WageRuleChangeRequest[]>(
+      buildWageRuleRequestQueryPath(wageRuleRequestStatusFilter, wageRuleRequestFrom, wageRuleRequestTo),
+      token,
+    );
     setWageRuleRequests(data);
   }
 
@@ -1603,7 +1631,41 @@ export default function AdminConsole() {
           <button disabled={!tokenReady || loading} type="submit">変更申請を作成</button>
         </form>
         <form onSubmit={loadWageRuleRequests} style={{ marginTop: 8 }}>
-          <button disabled={!tokenReady || loading} type="submit">変更申請を取得</button>
+          <div className="grid-2">
+            <label className="field">
+              <span>状態フィルタ</span>
+              <select
+                value={wageRuleRequestStatusFilter}
+                onChange={(e) =>
+                  setWageRuleRequestStatusFilter(e.target.value as 'all' | 'pending' | 'approved' | 'rejected')
+                }
+              >
+                <option value="all">全件</option>
+                <option value="pending">pending</option>
+                <option value="approved">approved</option>
+                <option value="rejected">rejected</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>期間From（作成日）</span>
+              <input
+                type="datetime-local"
+                value={wageRuleRequestFrom}
+                onChange={(e) => setWageRuleRequestFrom(e.target.value)}
+              />
+            </label>
+          </div>
+          <div className="grid-2">
+            <label className="field">
+              <span>期間To（作成日）</span>
+              <input
+                type="datetime-local"
+                value={wageRuleRequestTo}
+                onChange={(e) => setWageRuleRequestTo(e.target.value)}
+              />
+            </label>
+          </div>
+          <button disabled={!tokenReady || loading} type="submit">変更申請履歴を取得</button>
         </form>
         <table className="table" style={{ marginTop: 8 }}>
           <thead>
@@ -1613,7 +1675,7 @@ export default function AdminConsole() {
               <th>標準時間</th>
               <th>申請者</th>
               <th>状態</th>
-              <th>却下理由</th>
+              <th>レビューコメント</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -1626,16 +1688,20 @@ export default function AdminConsole() {
                 <td>{item.requestedBy.slice(0, 8)}</td>
                 <td>{item.status}</td>
                 <td>
-                  <input
-                    value={wageRuleReviewCommentById[item.id] || ''}
-                    onChange={(e) =>
-                      setWageRuleReviewCommentById((prev) => ({
-                        ...prev,
-                        [item.id]: e.target.value,
-                      }))
-                    }
-                    placeholder="却下時のみ必須"
-                  />
+                  {item.status === 'pending' ? (
+                    <input
+                      value={wageRuleReviewCommentById[item.id] || ''}
+                      onChange={(e) =>
+                        setWageRuleReviewCommentById((prev) => ({
+                          ...prev,
+                          [item.id]: e.target.value,
+                        }))
+                      }
+                      placeholder="却下時のみ必須"
+                    />
+                  ) : (
+                    item.reviewedComment || '-'
+                  )}
                 </td>
                 <td>
                   <button

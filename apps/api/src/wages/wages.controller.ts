@@ -65,10 +65,18 @@ export class WagesController {
   @ApiOkResponse({ type: WageRuleChangeRequestItemDto, isArray: true })
   async listRuleRequests(@Req() req: any, @Query() query: WageRuleRequestQueryDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
+    const createdAtWhere =
+      query.from || query.to
+        ? {
+            ...(query.from ? { gte: new Date(query.from) } : {}),
+            ...(query.to ? { lte: new Date(query.to) } : {}),
+          }
+        : undefined;
     const rows = await this.prisma.wageRuleChangeRequest.findMany({
       where: {
         organizationId: org,
         ...(query.status ? { status: query.status } : {}),
+        ...(createdAtWhere ? { createdAt: createdAtWhere } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: 50,

@@ -66,6 +66,7 @@
 - `PUT /wages/rules` で標準日時間と区分ポリシー（actual_only/fixed_zero/fixed_standard）を事業所単位で更新可能
 - `PUT /wages/rules` は `changeReason`（変更理由）必須。監査ログへ `before/after/changeReason` を記録
 - `POST /wages/rules/requests` で賃金ルール変更申請（pending）を作成し、`POST /wages/rules/requests/:id/approve` で承認適用
+- `GET /wages/rules/requests` は `status/from/to` で履歴フィルタ可能（作成日時ベース）
 - 承認は申請者と別ユーザーのみ可能（同一ユーザー承認は403）
 - `POST /wages/rules/requests/:id/reject` で却下可能。`reviewComment`（却下理由）必須で、監査ログに却下理由を記録
 
