@@ -1,11 +1,10 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsDateString, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsDateString, IsOptional, IsString, IsUUID, MinLength, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ShiftItemDto {
   @ApiProperty({ format: 'uuid', example: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1', description: '対象利用者ID' })
-  @IsString()
-  @MinLength(1)
+  @IsUUID()
   serviceUserId!: string;
 
   @ApiProperty({ example: 'packaging', description: '作業種別コード/名称' })
@@ -31,8 +30,7 @@ export class CreateShiftDto extends ShiftItemDto {}
 export class UpdateShiftDto {
   @ApiPropertyOptional({ format: 'uuid', example: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1', description: '更新後利用者ID' })
   @IsOptional()
-  @IsString()
-  @MinLength(1)
+  @IsUUID()
   serviceUserId?: string;
 
   @ApiPropertyOptional({ example: 'cleaning', description: '更新後作業種別' })
@@ -60,6 +58,7 @@ export class UpdateShiftDto {
 export class BulkShiftDto {
   @ApiProperty({ type: ShiftItemDto, isArray: true, description: '一括登録するシフト配列' })
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => ShiftItemDto)
   items!: ShiftItemDto[];

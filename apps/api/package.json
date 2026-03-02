@@ -6,7 +6,7 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "test:e2e": "jest --config test/jest-e2e.json --forceExit",
     "lint": "echo 'No lint config yet'",
     "prisma:generate": "prisma generate",

@@ -29,10 +29,13 @@ describe('Major Workflow (e2e)', () => {
   const otherAdminPassword = 'Admin456!';
   const staffPassword = 'Staff123!';
   const managerPassword = 'Manager123!';
+  const userRoleEmail = 'user-role.e2e@example.com';
+  const userRolePassword = 'UserRole123!';
   const adminMfaSecret = 'JBSWY3DPEHPK3PXP';
   const otherAdminMfaSecret = 'JBSWY3DPEHPK3PXQ';
   const staffMfaSecret = 'JBSWY3DPEHPK3PXR';
   const managerMfaSecret = 'JBSWY3DPEHPK3PXS';
+  const userRoleMfaSecret = 'JBSWY3DPEHPK3PXT';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -102,6 +105,17 @@ describe('Major Workflow (e2e)', () => {
         passwordHash: await hash(managerPassword, 10),
         mfaEnabled: true,
         mfaSecret: managerMfaSecret,
+      },
+    });
+    await prisma.staffUser.create({
+      data: {
+        organizationId,
+        email: userRoleEmail,
+        name: 'User Role E2E',
+        role: 'user',
+        passwordHash: await hash(userRolePassword, 10),
+        mfaEnabled: true,
+        mfaSecret: userRoleMfaSecret,
       },
     });
 
@@ -274,6 +288,26 @@ describe('Major Workflow (e2e)', () => {
     await request(app.getHttpServer())
       .get('/staff-users')
       .set('Authorization', `Bearer ${staffToken}`)
+      .expect(403);
+  });
+
+  it('rejects user role requests when serviceUser scope is missing', async () => {
+    const userToken = await loginAndGetAccessToken(userRoleEmail, userRolePassword, userRoleMfaSecret);
+
+    await request(app.getHttpServer())
+      .get('/attendance')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/attendance/clock-in')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ serviceUserId })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get('/me/attendance-summary')
+      .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
   });
 

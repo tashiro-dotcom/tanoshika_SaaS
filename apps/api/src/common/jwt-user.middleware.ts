@@ -2,9 +2,12 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { NextFunction, Request, Response } from 'express';
 import { RequestUser } from './types';
+import { getRequiredEnv } from './env';
 
 @Injectable()
 export class JwtUserMiddleware implements NestMiddleware {
+  private readonly accessSecret = getRequiredEnv('JWT_ACCESS_SECRET');
+
   constructor(private readonly jwtService: JwtService) {}
 
   use(req: Request, _res: Response, next: NextFunction) {
@@ -18,7 +21,7 @@ export class JwtUserMiddleware implements NestMiddleware {
 
     try {
       const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_ACCESS_SECRET || 'dev-access-secret',
+        secret: this.accessSecret,
       });
 
       const user: RequestUser = {

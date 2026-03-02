@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles, RolesGuard } from '../common/authz';
 import { ORGANIZATION_DEFAULT } from '../common/constants';
@@ -36,17 +36,18 @@ export class MeController {
     },
   })
   async attendanceSummary(@Req() req: any) {
+    const serviceUserId = this.requireUserScope(req);
     const logs = await this.prisma.attendanceLog.findMany({
       where: {
         organizationId: req.user.organizationId || ORGANIZATION_DEFAULT,
-        serviceUserId: req.user.serviceUserId,
+        serviceUserId,
       },
       orderBy: { clockInAt: 'desc' },
       take: 10,
     });
 
     return {
-      serviceUserId: req.user.serviceUserId,
+      serviceUserId,
       totalRecords: logs.length,
       latest: logs,
     };
@@ -73,17 +74,18 @@ export class MeController {
     },
   })
   async wageSummary(@Req() req: any) {
+    const serviceUserId = this.requireUserScope(req);
     const rows = await this.prisma.wageCalculation.findMany({
       where: {
         organizationId: req.user.organizationId || ORGANIZATION_DEFAULT,
-        serviceUserId: req.user.serviceUserId,
+        serviceUserId,
       },
       orderBy: [{ year: 'desc' }, { month: 'desc' }],
       take: 6,
     });
 
     return {
-      serviceUserId: req.user.serviceUserId,
+      serviceUserId,
       totalMonths: rows.length,
       latest: rows,
     };
@@ -113,11 +115,12 @@ export class MeController {
     },
   })
   async supportSummary(@Req() req: any) {
+    const serviceUserId = this.requireUserScope(req);
     const [records, latestPlan] = await Promise.all([
       this.prisma.supportRecord.findMany({
         where: {
           organizationId: req.user.organizationId || ORGANIZATION_DEFAULT,
-          serviceUserId: req.user.serviceUserId,
+          serviceUserId,
         },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -125,16 +128,23 @@ export class MeController {
       this.prisma.supportPlan.findFirst({
         where: {
           organizationId: req.user.organizationId || ORGANIZATION_DEFAULT,
-          serviceUserId: req.user.serviceUserId,
+          serviceUserId,
         },
         orderBy: { version: 'desc' },
       }),
     ]);
 
     return {
-      serviceUserId: req.user.serviceUserId,
+      serviceUserId,
       latestPlan,
       latestRecords: records,
     };
+  }
+
+  private requireUserScope(req: any): string {
+    if (!req.user?.serviceUserId) {
+      throw new ForbiddenException('service_user_scope_missing');
+    }
+    return req.user.serviceUserId;
   }
 }

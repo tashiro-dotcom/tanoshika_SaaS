@@ -40,7 +40,7 @@ export class AttendanceController {
   @ApiOkResponse({ type: AttendanceLogResponseDto })
   async clockIn(@Req() req: any, @Body() body: ClockInDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
-    const serviceUserId = body.serviceUserId || req.user.serviceUserId;
+    const serviceUserId = this.resolveScopedServiceUserId(req, body.serviceUserId);
     if (!serviceUserId) throw new BadRequestException('service_user_required');
     await this.assertServiceUserInOrganization(serviceUserId, org);
 
@@ -74,7 +74,7 @@ export class AttendanceController {
   @ApiOkResponse({ type: AttendanceLogResponseDto })
   async clockOut(@Req() req: any, @Body() body: ClockOutDto) {
     const org = req.user.organizationId || ORGANIZATION_DEFAULT;
-    const serviceUserId = body.serviceUserId || req.user.serviceUserId;
+    const serviceUserId = this.resolveScopedServiceUserId(req, body.serviceUserId);
     if (!serviceUserId) throw new BadRequestException('service_user_required');
     await this.assertServiceUserInOrganization(serviceUserId, org);
 
@@ -126,10 +126,11 @@ export class AttendanceController {
     };
 
     if (req.user.role === 'user') {
+      const serviceUserId = this.requireUserScope(req);
       return this.prisma.attendanceLog.findMany({
         where: {
           organizationId: org,
-          serviceUserId: req.user.serviceUserId,
+          serviceUserId,
           ...(from || to ? { clockInAt: clockInFilter } : {}),
         },
         orderBy: { clockInAt: 'desc' },
@@ -170,10 +171,11 @@ export class AttendanceController {
     };
 
     if (req.user.role === 'user') {
+      const serviceUserId = this.requireUserScope(req);
       return this.prisma.attendanceDayStatus.findMany({
         where: {
           organizationId: org,
-          serviceUserId: req.user.serviceUserId,
+          serviceUserId,
           ...(from || to ? { workDate: workDateFilter } : {}),
         },
         orderBy: [{ workDate: 'desc' }, { createdAt: 'desc' }],
@@ -250,6 +252,9 @@ export class AttendanceController {
     const attendance = await this.prisma.attendanceLog.findUnique({ where: { id: body.attendanceLogId } });
     if (!attendance) throw new BadRequestException('attendance_not_found');
     if (attendance.organizationId !== org) throw new ForbiddenException('organization_forbidden');
+    if (req.user.role === 'user' && attendance.serviceUserId !== this.requireUserScope(req)) {
+      throw new ForbiddenException('service_user_forbidden');
+    }
 
     const item = await this.prisma.attendanceCorrection.create({
       data: {
@@ -325,6 +330,24 @@ export class AttendanceController {
     if (serviceUser.organizationId !== organizationId) {
       throw new ForbiddenException('organization_forbidden');
     }
+  }
+
+  private requireUserScope(req: any): string {
+    if (!req.user?.serviceUserId) {
+      throw new ForbiddenException('service_user_scope_missing');
+    }
+    return req.user.serviceUserId;
+  }
+
+  private resolveScopedServiceUserId(req: any, requestedServiceUserId?: string): string | undefined {
+    if (req.user?.role !== 'user') {
+      return requestedServiceUserId || req.user?.serviceUserId;
+    }
+    const scopedServiceUserId = this.requireUserScope(req);
+    if (requestedServiceUserId && requestedServiceUserId !== scopedServiceUserId) {
+      throw new ForbiddenException('service_user_forbidden');
+    }
+    return scopedServiceUserId;
   }
 
   private normalizeWorkDate(workDate: string) {
