@@ -4,6 +4,7 @@ import { compare } from 'bcryptjs';
 import { authenticator } from 'otplib';
 import { PrismaService } from '../prisma.service';
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_DAYS } from '../common/constants';
+import { getRequiredEnv } from '../common/env';
 
 type AuthUser = {
   id: string;
@@ -13,6 +14,9 @@ type AuthUser = {
 
 @Injectable()
 export class AuthService {
+  private readonly accessSecret = getRequiredEnv('JWT_ACCESS_SECRET');
+  private readonly refreshSecret = getRequiredEnv('JWT_REFRESH_SECRET');
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -36,7 +40,7 @@ export class AuthService {
     const challengeToken = this.jwt.sign(
       { sub: user.id, type: 'mfa_challenge' },
       {
-        secret: process.env.JWT_ACCESS_SECRET || 'dev-access-secret',
+        secret: this.accessSecret,
         expiresIn: '5m',
       },
     );
@@ -52,7 +56,7 @@ export class AuthService {
     let decoded: any;
     try {
       decoded = this.jwt.verify(challengeToken, {
-        secret: process.env.JWT_ACCESS_SECRET || 'dev-access-secret',
+        secret: this.accessSecret,
       });
     } catch {
       throw new UnauthorizedException('challenge_invalid_or_expired');
@@ -89,9 +93,14 @@ export class AuthService {
       throw new UnauthorizedException('invalid_refresh_token');
     }
 
-    const decoded = this.jwt.verify(refreshToken, {
-      secret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret',
-    });
+    let decoded: { sub: string; type?: string };
+    try {
+      decoded = this.jwt.verify(refreshToken, {
+        secret: this.refreshSecret,
+      });
+    } catch {
+      throw new UnauthorizedException('invalid_refresh_token');
+    }
     if (decoded.type !== 'refresh') {
       throw new UnauthorizedException('invalid_refresh_token_type');
     }
@@ -128,7 +137,7 @@ export class AuthService {
         organizationId: user.organizationId,
       },
       {
-        secret: process.env.JWT_ACCESS_SECRET || 'dev-access-secret',
+        secret: this.accessSecret,
         expiresIn: ACCESS_TOKEN_TTL_SECONDS,
       },
     );
@@ -142,7 +151,7 @@ export class AuthService {
         jti: crypto.randomUUID(),
       },
       {
-        secret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret',
+        secret: this.refreshSecret,
         expiresIn: `${REFRESH_TOKEN_TTL_DAYS}d`,
       },
     );

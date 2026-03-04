@@ -308,11 +308,27 @@ export class WagesController {
   @ApiOkResponse({
     type: WageTemplatesResponseDto,
     example: {
-      current: { code: 'fukuoka', label: '福岡県様式（MVP）' },
+      current: {
+        code: 'fukuoka',
+        label: '福岡県様式（MVP）',
+        note: '福岡県運用注記: 時間内訳（実績/反映/差分）を末尾に記載',
+      },
       available: [
-        { code: 'fukuoka', label: '福岡県様式（MVP）' },
-        { code: 'kumamoto', label: '熊本県様式（MVP）' },
-        { code: 'saga', label: '佐賀県様式（MVP）' },
+        {
+          code: 'fukuoka',
+          label: '福岡県様式（MVP）',
+          note: '福岡県運用注記: 時間内訳（実績/反映/差分）を末尾に記載',
+        },
+        {
+          code: 'kumamoto',
+          label: '熊本県様式（MVP）',
+          note: '熊本県運用注記: 金額欄を先行表示し、利用者情報は後半に記載',
+        },
+        {
+          code: 'saga',
+          label: '佐賀県様式（MVP）',
+          note: '佐賀県運用注記: 日別区分件数を先頭集計欄として表示',
+        },
       ],
     },
   })

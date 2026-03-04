@@ -1,10 +1,9 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSupportPlanDto {
   @ApiProperty({ format: 'uuid', example: 'f8b0f209-f5d4-4af5-8a45-60f26f9f5df1', description: '対象利用者ID' })
-  @IsString()
-  @MinLength(1)
+  @IsUUID()
   serviceUserId!: string;
 
   @ApiPropertyOptional({ example: '作業継続性の改善', description: '支援計画の目標' })

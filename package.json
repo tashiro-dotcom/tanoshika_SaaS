@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "npm run dev -w apps/api & npm run dev -w apps/web",
     "build": "npm run build -w apps/api && npm run build -w apps/web",
-    "test": "npm run test -ws",
-    "lint": "npm run lint -ws",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
     "state:snapshot": "ts-node scripts/state/snapshot.ts",
     "state:restore": "ts-node scripts/state/restore.ts"
   },

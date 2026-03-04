@@ -52,8 +52,7 @@ export class AttendanceListQueryDto extends PaginationQueryDto {
 
 export class CreateAttendanceCorrectionDto {
   @ApiProperty({ format: 'uuid', example: '89335df7-b64c-45af-a4f5-941aa7f4ee58', description: '修正対象の勤怠ログID' })
-  @IsString()
-  @MinLength(1)
+  @IsUUID()
   attendanceLogId!: string;
 
   @ApiProperty({ example: '退勤時刻修正', description: '修正理由' })

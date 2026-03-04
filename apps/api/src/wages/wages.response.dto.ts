@@ -6,6 +6,9 @@ export class MunicipalityTemplateOptionDto {
 
   @ApiProperty({ example: '福岡県様式（MVP）' })
   label!: string;
+
+  @ApiProperty({ example: '福岡県運用注記: 時間内訳（実績/反映/差分）を末尾に記載' })
+  note!: string;
 }
 
 export class WageTemplatesResponseDto {
