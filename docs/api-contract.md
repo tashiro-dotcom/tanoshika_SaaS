@@ -48,7 +48,7 @@
 - `POST /wages/rules/requests/:id/reject`
 - `POST /wages/calculate-monthly`
 - `POST /wages/:id/approve`
-- `GET /wages/templates`
+- `GET /wages/templates`（`code/label/note`）
 - `GET /wages/:id/slip`
 - `GET /wages/:id/slip.csv`
 - `GET /wages/:id/slip.pdf`
@@ -68,12 +68,14 @@
 - `POST /wages/rules/requests` で賃金ルール変更申請（pending）を作成し、`POST /wages/rules/requests/:id/approve` で承認適用
 - 承認は申請者と別ユーザーのみ可能（同一ユーザー承認は403）
 - `POST /wages/rules/requests/:id/reject` で却下可能。`reviewComment`（却下理由）必須で、監査ログに却下理由を記録
+- 明細テンプレートは自治体別に `CSV項目名/列順/注記` を保持し、`/wages/templates` で運用注記を確認可能
 
 ### Export Endpoints (CSV/PDF)
 - `GET /wages/:id/slip.csv`
   - `Content-Type: text/csv; charset=utf-8`
   - `Content-Disposition: attachment; filename="wage-slip-<id>-<yyyymm>.csv"`
   - UTF-8 BOM付き（Excel互換）
+  - 自治体テンプレートごとにヘッダー項目名・列順・注記列（`様式注記`）が異なる
   - OpenAPI schema: `text/csv` + `type: string`, `format: binary`
 - `GET /wages/:id/slip.pdf`
   - `Content-Type: application/pdf`

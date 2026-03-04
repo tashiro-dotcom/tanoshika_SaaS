@@ -59,6 +59,7 @@
 - 賃金ルール変更は軽量承認フローを追加（`POST /wages/rules/requests` -> `POST /wages/rules/requests/:id/approve`）。申請者本人の承認は禁止
 - 賃金ルール変更申請の却下フローを追加（`POST /wages/rules/requests/:id/reject`）。却下理由 `reviewComment` を必須化し監査ログへ記録
 - 管理画面 `/admin` の賃金ルール申請一覧は履歴確認用途で `status/from/to` フィルタ対応（pending 以外の承認/却下履歴も参照）
+- 自治体別の賃金明細テンプレート差分を実装（CSVの項目名/列順/注記を `fukuoka/kumamoto/saga` で明示分離し、`GET /wages/templates` へ `note` を追加）
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
