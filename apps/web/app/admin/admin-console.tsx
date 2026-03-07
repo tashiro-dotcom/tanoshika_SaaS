@@ -1095,6 +1095,11 @@ export default function AdminConsole() {
       <section className="card">
         <h2>1. 認証</h2>
         <p className="small">メール/パスワード -&gt; MFAコード入力でセッションを開始します。</p>
+        <ul className="small" style={{ marginTop: 6, paddingLeft: 18 }}>
+          <li>OTPは認証アプリの最新6桁を入力（30秒更新）</li>
+          <li>MFAチャレンジは5分で失効。期限切れ時は「ログイン（MFA開始）」から再実行</li>
+          <li>運用手順詳細: <code>docs/MFA_RUNBOOK.md</code></li>
+        </ul>
         <form onSubmit={login}>
           <label className="field">
             <span>メールアドレス</span>

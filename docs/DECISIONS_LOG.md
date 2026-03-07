@@ -61,6 +61,7 @@
 - 管理画面 `/admin` の賃金ルール申請一覧は履歴確認用途で `status/from/to` フィルタ対応（pending 以外の承認/却下履歴も参照）
 - 自治体別の賃金明細テンプレート差分を実装（CSVの項目名/列順/注記を `fukuoka/kumamoto/saga` で明示分離し、`GET /wages/templates` へ `note` を追加）
 - `/admin` にUAT実施チェックリストと記録メモ（ブラウザ保存/コピー）を追加し、現場試験の進捗記録を画面上で完結できるようにした
+- MFA運用手順を標準化し、OTP生成手順とチャレンジ失効（5分）時の再ログイン手順を `docs/MFA_RUNBOOK.md` と `/admin` 認証UIへ明示
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
