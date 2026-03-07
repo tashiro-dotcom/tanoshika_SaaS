@@ -35,8 +35,8 @@ type AttendanceDayStatus = {
 };
 
 type WageTemplatesResponse = {
-  current: { code: string; label: string };
-  available: Array<{ code: string; label: string }>;
+  current: { code: string; label: string; note: string };
+  available: Array<{ code: string; label: string; note: string }>;
 };
 
 type WageRules = {
@@ -248,6 +248,17 @@ function getFilenameFromContentDisposition(value: string | null, fallback: strin
   return matched?.[1] || fallback;
 }
 
+const uatScenarioItems = [
+  'シナリオ1: ログイン',
+  'シナリオ2: 利用者登録とステータス更新',
+  'シナリオ3: 打刻（出勤・退勤）',
+  'シナリオ4: 勤怠修正申請と承認',
+  'シナリオ5: 月次賃金計算から明細出力',
+  '異常系: MFA誤り/権限不足/不正IDの確認',
+] as const;
+
+const uatStorageKey = 'admin-uat-progress-v1';
+
 export default function AdminConsole() {
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('Admin123!');
@@ -307,6 +318,10 @@ export default function AdminConsole() {
   const [dayStatusNoteByUser, setDayStatusNoteByUser] = useState<Record<string, string>>({});
   const [dayStatusSavingByUser, setDayStatusSavingByUser] = useState<Record<string, boolean>>({});
   const [dayStatusErrorByUser, setDayStatusErrorByUser] = useState<Record<string, string>>({});
+  const [uatChecks, setUatChecks] = useState<Record<string, boolean>>({});
+  const [uatExecutor, setUatExecutor] = useState('');
+  const [uatEnvironment, setUatEnvironment] = useState('');
+  const [uatNotes, setUatNotes] = useState('');
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
   const selectedClockUserName = useMemo(
@@ -340,6 +355,37 @@ export default function AdminConsole() {
     void refreshAttendanceDayStatuses(accessToken.trim(), workDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenReady, accessToken, workDate]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(uatStorageKey);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as {
+        checks?: Record<string, boolean>;
+        executor?: string;
+        environment?: string;
+        notes?: string;
+      };
+      if (parsed.checks) setUatChecks(parsed.checks);
+      if (typeof parsed.executor === 'string') setUatExecutor(parsed.executor);
+      if (typeof parsed.environment === 'string') setUatEnvironment(parsed.environment);
+      if (typeof parsed.notes === 'string') setUatNotes(parsed.notes);
+    } catch {
+      // noop
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      uatStorageKey,
+      JSON.stringify({
+        checks: uatChecks,
+        executor: uatExecutor,
+        environment: uatEnvironment,
+        notes: uatNotes,
+      }),
+    );
+  }, [uatChecks, uatExecutor, uatEnvironment, uatNotes]);
 
   function labelForDayStatus(status: string) {
     const found = attendanceDayStatusOptions.find((x) => x.value === status);
@@ -968,6 +1014,26 @@ export default function AdminConsole() {
     }
   }
 
+  async function copyUatRecord() {
+    const done = uatScenarioItems.filter((item) => uatChecks[item]);
+    const pending = uatScenarioItems.filter((item) => !uatChecks[item]);
+    const report = [
+      `実施日: ${new Date().toLocaleDateString('ja-JP')}`,
+      `実施者: ${uatExecutor || '(未入力)'}`,
+      `対象環境: ${uatEnvironment || '(未入力)'}`,
+      `成功シナリオ: ${done.length > 0 ? done.join(' / ') : '(なし)'}`,
+      `未実施シナリオ: ${pending.length > 0 ? pending.join(' / ') : '(なし)'}`,
+      `不具合・要望: ${uatNotes || '(なし)'}`,
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(report);
+      setOpsInfo('UAT実施記録をクリップボードへコピーしました。');
+    } catch {
+      setError('UAT実施記録のコピーに失敗しました。');
+    }
+  }
+
   return (
     <div className="grid">
       <section className="card guide-card">
@@ -980,6 +1046,50 @@ export default function AdminConsole() {
           <li>月末は「賃金管理」で計算→承認→明細出力する</li>
         </ol>
         <p className="small">操作結果は画面上部のメッセージ欄に表示されます。</p>
+      </section>
+
+      <section className="card">
+        <h2>UAT実施記録</h2>
+        <p className="small">現場テストの進捗をこの画面で記録できます（ブラウザ保存）。</p>
+        <div className="checklist">
+          {uatScenarioItems.map((item) => (
+            <label key={item} className="check-row">
+              <input
+                type="checkbox"
+                checked={!!uatChecks[item]}
+                onChange={(e) =>
+                  setUatChecks((prev) => ({
+                    ...prev,
+                    [item]: e.target.checked,
+                  }))
+                }
+              />
+              <span>{item}</span>
+            </label>
+          ))}
+        </div>
+        <div className="grid-2" style={{ marginTop: 10 }}>
+          <label className="field">
+            <span>実施者</span>
+            <input value={uatExecutor} onChange={(e) => setUatExecutor(e.target.value)} placeholder="氏名" />
+          </label>
+          <label className="field">
+            <span>対象環境</span>
+            <input value={uatEnvironment} onChange={(e) => setUatEnvironment(e.target.value)} placeholder="staging / local など" />
+          </label>
+        </div>
+        <label className="field">
+          <span>不具合・要望メモ</span>
+          <textarea
+            rows={4}
+            value={uatNotes}
+            onChange={(e) => setUatNotes(e.target.value)}
+            placeholder="再現手順・期待結果・実際結果を残す"
+          />
+        </label>
+        <button type="button" onClick={() => void copyUatRecord()}>
+          実施記録をコピー
+        </button>
       </section>
 
       <section className="card">
@@ -1738,9 +1848,13 @@ export default function AdminConsole() {
         {wageTemplates ? (
           <>
             <p>現在: {wageTemplates.current.label} ({wageTemplates.current.code})</p>
+            <p className="small">注記: {wageTemplates.current.note}</p>
             <ul>
               {wageTemplates.available.map((item) => (
-                <li key={item.code}>{item.label} ({item.code})</li>
+                <li key={item.code}>
+                  {item.label} ({item.code})<br />
+                  <span className="small">{item.note}</span>
+                </li>
               ))}
             </ul>
           </>
