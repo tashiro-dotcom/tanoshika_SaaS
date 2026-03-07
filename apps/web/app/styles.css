@@ -190,6 +190,10 @@ button:disabled {
   font-size: 0.92rem;
 }
 
+.row-highlight td {
+  background: #ecfeff;
+}
+
 @media (max-width: 720px) {
   .grid-2 {
     grid-template-columns: 1fr;

@@ -299,10 +299,9 @@ export default function AdminConsole() {
   const [newPhone, setNewPhone] = useState('');
   const [newEmergencyContact, setNewEmergencyContact] = useState('');
   const [newStatus, setNewStatus] = useState<ServiceUserStatus>('active');
-  const [statusTargetUserId, setStatusTargetUserId] = useState('');
-  const [statusValue, setStatusValue] = useState<ServiceUserStatus>('active');
   const [inlineStatusDrafts, setInlineStatusDrafts] = useState<Record<string, ServiceUserStatus>>({});
   const [updatingServiceUserId, setUpdatingServiceUserId] = useState('');
+  const [recentCreatedUserId, setRecentCreatedUserId] = useState('');
   const [correctionTargetLogId, setCorrectionTargetLogId] = useState('');
   const [correctionReason, setCorrectionReason] = useState('');
   const [correctionClockInAt, setCorrectionClockInAt] = useState('');
@@ -327,10 +326,6 @@ export default function AdminConsole() {
   const selectedClockUserName = useMemo(
     () => serviceUsers.find((x) => x.id === clockServiceUserId)?.fullName || '',
     [serviceUsers, clockServiceUserId],
-  );
-  const selectedStatusUserName = useMemo(
-    () => serviceUsers.find((x) => x.id === statusTargetUserId)?.fullName || '',
-    [serviceUsers, statusTargetUserId],
   );
   const latestAttendanceByServiceUser = useMemo(() => {
     const map = new Map<string, AttendanceLog>();
@@ -449,9 +444,6 @@ export default function AdminConsole() {
       }
       return next;
     });
-    if (data.length > 0 && !statusTargetUserId) {
-      setStatusTargetUserId(data[0].id);
-    }
     if (data.length > 0 && !clockServiceUserId) {
       setClockServiceUserId(data[0].id);
     }
@@ -838,9 +830,8 @@ export default function AdminConsole() {
         accessToken.trim(),
       );
       await refreshServiceUsers(accessToken.trim());
-      setStatusTargetUserId(created.id);
-      setStatusValue(normalizeServiceUserStatus(created.status));
       setClockServiceUserId(created.id);
+      setRecentCreatedUserId(created.id);
       setNewFullName('');
       setNewDisabilityCategory('');
       setNewContractDate('');
@@ -853,12 +844,6 @@ export default function AdminConsole() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function updateServiceUserStatus(e: FormEvent) {
-    e.preventDefault();
-    if (!tokenReady || !statusTargetUserId) return;
-    await updateServiceUserStatusById(statusTargetUserId, statusValue);
   }
 
   async function updateServiceUserStatusById(serviceUserId: string, status: ServiceUserStatus) {
@@ -880,6 +865,11 @@ export default function AdminConsole() {
       setUpdatingServiceUserId('');
       setLoading(false);
     }
+  }
+
+  async function applyQuickStatus(serviceUserId: string, status: ServiceUserStatus) {
+    setInlineStatusDrafts((prev) => ({ ...prev, [serviceUserId]: status }));
+    await updateServiceUserStatusById(serviceUserId, status);
   }
 
   async function createAttendanceCorrection(e: FormEvent) {
@@ -1137,7 +1127,7 @@ export default function AdminConsole() {
 
       <section className="card">
         <h2>2. 利用者管理</h2>
-        <p className="small">登録した利用者は自動で「ステータス更新」「打刻実行」の対象にセットされます。</p>
+        <p className="small">登録した利用者は一覧行でそのままステータス更新できます。打刻対象にも自動セットされます。</p>
         <form onSubmit={loadServiceUsers}>
           <button disabled={!tokenReady || loading} type="submit">利用者一覧を取得</button>
         </form>
@@ -1183,41 +1173,7 @@ export default function AdminConsole() {
           </label>
           <button disabled={!tokenReady || loading || !newFullName.trim()} type="submit">利用者を登録</button>
         </form>
-        <form onSubmit={updateServiceUserStatus} style={{ marginTop: 12 }}>
-          <h3 style={{ margin: '0 0 8px' }}>ステータス更新</h3>
-          <div className="grid-2">
-            <label className="field">
-              <span>対象利用者</span>
-              <select
-                value={statusTargetUserId}
-                onChange={(e) => setStatusTargetUserId(e.target.value)}
-                disabled={serviceUsers.length === 0}
-              >
-                {serviceUsers.length === 0 ? (
-                  <option value="">一覧を先に取得</option>
-                ) : (
-                  serviceUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.fullName} ({user.id.slice(0, 8)})
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-            <label className="field">
-              <span>変更先ステータス</span>
-              <select value={statusValue} onChange={(e) => setStatusValue(e.target.value as ServiceUserStatus)}>
-                {serviceUserStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <button disabled={!tokenReady || loading || !statusTargetUserId} type="submit">ステータス更新</button>
-        </form>
-        <p className="small" style={{ marginTop: 10 }}>下の一覧からも1クリックでステータス更新できます。</p>
+        <p className="small" style={{ marginTop: 10 }}>下の一覧から「更新」またはクイック操作でステータス更新できます。</p>
         <table className="table">
           <thead>
             <tr>
@@ -1230,7 +1186,7 @@ export default function AdminConsole() {
           </thead>
           <tbody>
             {serviceUsers.map((user) => (
-              <tr key={user.id}>
+              <tr key={user.id} className={recentCreatedUserId === user.id ? 'row-highlight' : undefined}>
                 <td>{user.id.slice(0, 8)}</td>
                 <td>{user.fullName}</td>
                 <td>
@@ -1272,11 +1228,27 @@ export default function AdminConsole() {
                     </button>
                     <button
                       type="button"
+                      disabled={!tokenReady || loading || updatingServiceUserId === user.id || user.status === 'active'}
+                      onClick={() => {
+                        void applyQuickStatus(user.id, 'active');
+                      }}
+                    >
+                      稼働中へ
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!tokenReady || loading || updatingServiceUserId === user.id || user.status === 'leaving'}
+                      onClick={() => {
+                        void applyQuickStatus(user.id, 'leaving');
+                      }}
+                    >
+                      退所準備へ
+                    </button>
+                    <button
+                      type="button"
                       disabled={!tokenReady || loading}
                       onClick={() => {
                         setClockServiceUserId(user.id);
-                        setStatusTargetUserId(user.id);
-                        setStatusValue(inlineStatusDrafts[user.id] || normalizeServiceUserStatus(user.status));
                         setOpsInfo(`「${user.fullName}」を打刻・ステータス更新の対象に設定しました。`);
                       }}
                     >
@@ -1461,7 +1433,6 @@ export default function AdminConsole() {
               )}
             </select>
           </label>
-          {selectedStatusUserName ? <p className="small">ステータス更新の対象: {selectedStatusUserName}</p> : null}
           <div className="grid-2">
             <label className="field">
               <span>打刻方法</span>
