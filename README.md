@@ -30,6 +30,7 @@
 
 - admin: `admin@example.com` / `Admin123!`
 - TOTP secret: `JBSWY3DPEHPK3PXP`
+- MFA運用手順: `docs/MFA_RUNBOOK.md`
 
 ## 自治体テンプレート（明細出力）
 
