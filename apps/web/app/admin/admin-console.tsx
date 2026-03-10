@@ -339,6 +339,13 @@ export default function AdminConsole() {
     }
     return map;
   }, [attendanceDayStatuses]);
+  const correctionTargetSummary = useMemo(() => {
+    if (!correctionTargetLogId) return '';
+    const target = attendanceLogs.find((log) => log.id === correctionTargetLogId);
+    if (!target) return correctionTargetLogId.slice(0, 8);
+    const serviceUserName = serviceUsers.find((user) => user.id === target.serviceUserId)?.fullName || target.serviceUserId.slice(0, 8);
+    return `${target.id.slice(0, 8)} / ${serviceUserName}`;
+  }, [attendanceLogs, correctionTargetLogId, serviceUsers]);
 
   useEffect(() => {
     if (!tokenReady) return;
@@ -1279,8 +1286,8 @@ export default function AdminConsole() {
           <thead>
             <tr>
               <th>利用者</th>
-              <th>最新打刻</th>
-              <th>状態</th>
+              <th>直近ログ</th>
+              <th>直近状態</th>
               <th>日別区分</th>
               <th>操作</th>
             </tr>
@@ -1322,8 +1329,21 @@ export default function AdminConsole() {
                     ) : null}
                   </td>
                   <td>
-                    {latest ? new Date(latest.clockInAt).toLocaleString('ja-JP') : '-'}
-                    {latest?.clockOutAt ? ` / ${new Date(latest.clockOutAt).toLocaleString('ja-JP')}` : ''}
+                    {latest ? (
+                      <>
+                        <span>{latest.id.slice(0, 8)}</span>
+                        <br />
+                        <span className="small">{new Date(latest.clockInAt).toLocaleString('ja-JP')}</span>
+                        {latest.clockOutAt ? (
+                          <>
+                            <br />
+                            <span className="small">{new Date(latest.clockOutAt).toLocaleString('ja-JP')}</span>
+                          </>
+                        ) : null}
+                      </>
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td><span className={statusClassName}>{statusText}</span></td>
                   <td>
@@ -1387,6 +1407,17 @@ export default function AdminConsole() {
                       >
                         {isClocking ? '処理中...' : '退勤'}
                       </button>
+                      <button
+                        type="button"
+                        disabled={!latest}
+                        onClick={() => {
+                          if (!latest) return;
+                          setCorrectionTargetLogId(latest.id);
+                          setOpsInfo(`「${user.fullName}」の直近ログを修正申請対象に設定しました。`);
+                        }}
+                      >
+                        修正対象にする
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1404,6 +1435,7 @@ export default function AdminConsole() {
         </form>
         <form onSubmit={createAttendanceCorrection} style={{ marginTop: 12 }}>
           <h3 style={{ margin: '0 0 8px' }}>修正申請</h3>
+          {correctionTargetSummary ? <p className="small">現在の対象: {correctionTargetSummary}</p> : null}
           <label className="field">
             <span>対象勤怠ログ</span>
             <select
@@ -1455,33 +1487,6 @@ export default function AdminConsole() {
           </label>
           <button disabled={!tokenReady || loading || !approveCorrectionId.trim()} type="submit">申請を承認</button>
         </form>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>ログID</th>
-              <th>利用者ID</th>
-              <th>方法</th>
-              <th>出勤</th>
-              <th>退勤</th>
-            </tr>
-          </thead>
-          <tbody>
-            {attendanceLogs.map((log) => (
-              <tr key={log.id}>
-                <td>{log.id.slice(0, 8)}</td>
-                <td>{log.serviceUserId.slice(0, 8)}</td>
-                <td>{log.method}</td>
-                <td>{new Date(log.clockInAt).toLocaleString('ja-JP')}</td>
-                <td>{log.clockOutAt ? new Date(log.clockOutAt).toLocaleString('ja-JP') : '-'}</td>
-              </tr>
-            ))}
-            {attendanceLogs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="small">データ未取得</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
         <table className="table" style={{ marginTop: 12 }}>
           <thead>
             <tr>
