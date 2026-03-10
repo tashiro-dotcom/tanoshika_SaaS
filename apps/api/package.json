@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
+    "dev:lan": "nest start --watch --host 0.0.0.0",
     "build": "nest build",
     "start": "node dist/main.js",
     "test": "jest --passWithNoTests",
