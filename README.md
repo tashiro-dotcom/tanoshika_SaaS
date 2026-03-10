@@ -57,3 +57,5 @@
 - 重要判断ログ: `docs/DECISIONS_LOG.md`
 - 次の優先実装: `docs/NEXT_ACTIONS.md`
 - GitHub必須チェック設定: `docs/GITHUB_BRANCH_PROTECTION.md`
+- 社内トライアル手順: `docs/INTERNAL_TRIAL_CHECKLIST.md`
+- フィードバック記録テンプレート: `docs/INTERNAL_TRIAL_FEEDBACK_TEMPLATE.md`
