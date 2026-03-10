@@ -307,7 +307,6 @@ export default function AdminConsole() {
   const [correctionClockInAt, setCorrectionClockInAt] = useState('');
   const [correctionClockOutAt, setCorrectionClockOutAt] = useState('');
   const [approveCorrectionId, setApproveCorrectionId] = useState('');
-  const [clockServiceUserId, setClockServiceUserId] = useState('');
   const [clockMethod, setClockMethod] = useState('web');
   const [clockLocation, setClockLocation] = useState('');
   const [quickClockLoadingByUser, setQuickClockLoadingByUser] = useState<Record<string, boolean>>({});
@@ -323,10 +322,6 @@ export default function AdminConsole() {
   const [uatNotes, setUatNotes] = useState('');
 
   const tokenReady = useMemo(() => accessToken.trim().length > 0, [accessToken]);
-  const selectedClockUserName = useMemo(
-    () => serviceUsers.find((x) => x.id === clockServiceUserId)?.fullName || '',
-    [serviceUsers, clockServiceUserId],
-  );
   const latestAttendanceByServiceUser = useMemo(() => {
     const map = new Map<string, AttendanceLog>();
     for (const log of attendanceLogs) {
@@ -444,9 +439,6 @@ export default function AdminConsole() {
       }
       return next;
     });
-    if (data.length > 0 && !clockServiceUserId) {
-      setClockServiceUserId(data[0].id);
-    }
   }
 
   async function login(e: FormEvent) {
@@ -830,7 +822,6 @@ export default function AdminConsole() {
         accessToken.trim(),
       );
       await refreshServiceUsers(accessToken.trim());
-      setClockServiceUserId(created.id);
       setRecentCreatedUserId(created.id);
       setNewFullName('');
       setNewDisabilityCategory('');
@@ -838,7 +829,7 @@ export default function AdminConsole() {
       setNewPhone('');
       setNewEmergencyContact('');
       setNewStatus('active');
-      setOpsInfo(`利用者を登録しました。次は「${created.fullName}」を対象にそのままステータス更新/打刻できます。`);
+      setOpsInfo(`利用者を登録しました。次は勤怠管理の行内ボタンから「${created.fullName}」を打刻できます。`);
     } catch (err) {
       setError(err instanceof Error ? err.message : '利用者登録に失敗しました');
     } finally {
@@ -900,17 +891,6 @@ export default function AdminConsole() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function clockIn(e: FormEvent) {
-    e.preventDefault();
-    if (!tokenReady || !clockServiceUserId) return;
-    await runClockAction(clockServiceUserId, 'clock-in');
-  }
-
-  async function clockOut() {
-    if (!tokenReady || !clockServiceUserId) return;
-    await runClockAction(clockServiceUserId, 'clock-out');
   }
 
   async function runClockAction(serviceUserId: string, action: 'clock-in' | 'clock-out') {
@@ -1244,16 +1224,6 @@ export default function AdminConsole() {
                     >
                       退所準備へ
                     </button>
-                    <button
-                      type="button"
-                      disabled={!tokenReady || loading}
-                      onClick={() => {
-                        setClockServiceUserId(user.id);
-                        setOpsInfo(`「${user.fullName}」を打刻・ステータス更新の対象に設定しました。`);
-                      }}
-                    >
-                      この利用者で打刻
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -1269,7 +1239,7 @@ export default function AdminConsole() {
 
       <section className="card">
         <h2>3. 勤怠管理</h2>
-        <p className="small">現在の打刻対象: {selectedClockUserName || '未選択'}</p>
+        <p className="small">利用者行の「出勤/退勤」を押すだけで打刻できます。</p>
         <div className="grid-2">
           <label className="field">
             <span>勤務日</span>
@@ -1285,6 +1255,24 @@ export default function AdminConsole() {
               区分を再取得
             </button>
           </div>
+        </div>
+        <div className="grid-2">
+          <label className="field">
+            <span>打刻方法（行内打刻の共通値）</span>
+            <select value={clockMethod} onChange={(e) => setClockMethod(e.target.value)}>
+              <option value="web">web</option>
+              <option value="qr">qr</option>
+              <option value="proxy">proxy</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>位置情報メモ（行内打刻の共通値）</span>
+            <input
+              value={clockLocation}
+              onChange={(e) => setClockLocation(e.target.value)}
+              placeholder="福岡市中央区"
+            />
+          </label>
         </div>
         <h3 style={{ margin: '8px 0' }}>ワンクリック打刻（利用者ごと）</h3>
         <table className="table">
@@ -1385,7 +1373,6 @@ export default function AdminConsole() {
                         type="button"
                         disabled={!tokenReady || loading || isClocking || isWorking || isLeaveLike}
                         onClick={() => {
-                          setClockServiceUserId(user.id);
                           void runClockAction(user.id, 'clock-in');
                         }}
                       >
@@ -1395,7 +1382,6 @@ export default function AdminConsole() {
                         type="button"
                         disabled={!tokenReady || loading || isClocking || !isWorking || isLeaveLike}
                         onClick={() => {
-                          setClockServiceUserId(user.id);
                           void runClockAction(user.id, 'clock-out');
                         }}
                       >
@@ -1413,57 +1399,6 @@ export default function AdminConsole() {
             ) : null}
           </tbody>
         </table>
-        <form onSubmit={clockIn}>
-          <h3 style={{ margin: '0 0 8px' }}>打刻実行</h3>
-          <label className="field">
-            <span>対象利用者</span>
-            <select
-              value={clockServiceUserId}
-              onChange={(e) => setClockServiceUserId(e.target.value)}
-              disabled={serviceUsers.length === 0}
-            >
-              {serviceUsers.length === 0 ? (
-                <option value="">利用者一覧を先に取得</option>
-              ) : (
-                serviceUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.fullName} ({user.id.slice(0, 8)})
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-          <div className="grid-2">
-            <label className="field">
-              <span>打刻方法</span>
-              <select value={clockMethod} onChange={(e) => setClockMethod(e.target.value)}>
-                <option value="web">web</option>
-                <option value="qr">qr</option>
-                <option value="proxy">proxy</option>
-              </select>
-            </label>
-            <label className="field">
-              <span>位置情報メモ</span>
-              <input
-                value={clockLocation}
-                onChange={(e) => setClockLocation(e.target.value)}
-                placeholder="福岡市中央区"
-              />
-            </label>
-          </div>
-          <div className="actions">
-            <button disabled={!tokenReady || loading || !clockServiceUserId} type="submit">出勤打刻</button>
-            <button
-              disabled={!tokenReady || loading || !clockServiceUserId}
-              type="button"
-              onClick={() => {
-                void clockOut();
-              }}
-            >
-              退勤打刻
-            </button>
-          </div>
-        </form>
         <form onSubmit={loadAttendance}>
           <button disabled={!tokenReady || loading} type="submit">勤怠一覧を取得</button>
         </form>
