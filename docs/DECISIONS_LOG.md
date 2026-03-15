@@ -66,6 +66,8 @@
 - `/admin` 勤怠管理の打刻導線を行内ボタンへ一本化し、個別対象を選ぶ打刻フォームを廃止。打刻方法/位置情報は共通設定としてセクション上部に集約
 - `/admin` 勤怠一覧を行内運用起点へ整理し、直近ログ表示・出退勤・修正対象セットを同一テーブルで完結できるようにした
 - 社内LAN上であなたのPCを暫定テスト機として使う前提のトライアル手順と、エンジニアリング原則ベースのフィードバック記録テンプレートを追加した
+- `/admin` を section-based modules へ再編し、`admin-console.tsx` は薄い composition root として保持する方針に変更した。共通ロジックは `_lib/api-client.ts` / `_lib/types.ts` / `_lib/helpers.ts` へ抽出し、認証・利用者・勤怠・賃金・UAT をセクション単位の hook + component 構成へ分離した
+- Web 側に `eslint` と `jest` を導入し、`_lib` 配下の `helpers` / `api-client` に単体テストを追加した。あわせて `docs/baseline-api-calls.md` / `docs/dependency-map.md` を追加し、手動 spot-check で `service-users` / `attendance-statuses` / `logout` の実通信を確認できる状態にした
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
