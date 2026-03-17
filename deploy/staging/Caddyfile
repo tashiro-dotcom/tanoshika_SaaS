@@ -1,0 +1,17 @@
+{$APP_DOMAIN} {
+    encode gzip
+
+    basic_auth {
+        {$BASIC_AUTH_USER} {$BASIC_AUTH_PASSWORD_HASH}
+    }
+
+    @api path /auth* /staff-users* /service-users* /support-plans* /support-records* /shifts* /attendance* /attendance-statuses* /attendance-corrections* /wages* /me* /api-docs* /api-docs-json
+
+    handle @api {
+        reverse_proxy api:3001
+    }
+
+    handle {
+        reverse_proxy web:3000
+    }
+}

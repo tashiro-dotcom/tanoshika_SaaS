@@ -68,6 +68,11 @@
 - 社内LAN上であなたのPCを暫定テスト機として使う前提のトライアル手順と、エンジニアリング原則ベースのフィードバック記録テンプレートを追加した
 - `/admin` を section-based modules へ再編し、`admin-console.tsx` は薄い composition root として保持する方針に変更した。共通ロジックは `_lib/api-client.ts` / `_lib/types.ts` / `_lib/helpers.ts` へ抽出し、認証・利用者・勤怠・賃金・UAT をセクション単位の hook + component 構成へ分離した
 - Web 側に `eslint` と `jest` を導入し、`_lib` 配下の `helpers` / `api-client` に単体テストを追加した。あわせて `docs/baseline-api-calls.md` / `docs/dependency-map.md` を追加し、手動 spot-check で `service-users` / `attendance-statuses` / `logout` の実通信を確認できる状態にした
+- 社内向け staging は単一 VPS + Docker + Caddy 構成で進める方針に決定した。公開入口は Caddy に集約し、Basic 認証の前段保護とドメイン前提の自動 HTTPS を採用する
+- staging 構成は `deploy/staging/docker-compose.yml` に集約し、`caddy` / `web` / `api` / `postgres` を同一ホストで起動する。Postgres は `pg_isready` healthcheck を持ち、API は `depends_on: condition: service_healthy` で待機する
+- Web から API への公開経路は same-origin を維持し、Caddy が API パス群のみ `api:3001` へ reverse proxy する。外部へ API 直 URL は配布しない
+- バックエンドの staging 対応は最小差分に留め、`apps/api/src/main.ts` の listen port を `process.env.PORT || 3001` で受ける 1 箇所だけ変更した
+- staging 運用手順は初回デプロイに必要な範囲へ絞り、`docs/STAGING_DEPLOY_RUNBOOK.md` に「VPS 初期セットアップ」「アプリ更新」「DB バックアップ/リストア」の 3 手順のみを記載する
 
 ## 記録ルール
 - 1行目に日付（YYYY-MM-DD）
