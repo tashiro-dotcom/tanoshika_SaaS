@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+apps/*/node_modules
+apps/*/.next
+apps/*/dist
+coverage
+logs
+STATE
+npm-debug.log*
+.DS_Store

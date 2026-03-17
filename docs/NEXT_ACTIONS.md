@@ -19,7 +19,8 @@
 1. CIで `guardrails-check` と `e2e` を必須ステータスに設定
 2. OpenAPIに運用向け注意事項（例: userロール時のserviceUserId扱い）を追記
 3. OpenAPIタグ順の最適化（現場導線に合わせる）
-4. 公開環境の構成確定（Web/API/DB の配置、env 分離、起動方式、公開前チェックの定義）
+4. staging 構成のローカル検証完了（Docker/Caddy 構成の build・疎通確認と Step A コミット）
+5. staging の VPS 実デプロイ（ドメイン/DNS/Caddy HTTPS/Basic 認証/主要フロー確認）
 
 ## 優先度 Low
 1. Next.js 14.2.30 の脆弱性対応アップデート
